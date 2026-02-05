@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from '@shared/filters';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -16,6 +17,9 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1', {
     exclude: ['health', 'health/(.*)'],
   });
+
+  // Filter global de exceções
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Validação global de DTOs
   app.useGlobalPipes(

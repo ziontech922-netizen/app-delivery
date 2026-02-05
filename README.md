@@ -212,7 +212,81 @@ npm run test:cov
 
 ### API (prefixo `/api/v1`)
 
-*Endpoints serão documentados conforme implementação*
+#### Autenticação (`/api/v1/auth`)
+
+| Método | Endpoint | Descrição | Auth |
+|--------|----------|-----------|------|
+| POST | `/auth/register` | Cadastro de usuário | ❌ |
+| POST | `/auth/login` | Login | ❌ |
+| POST | `/auth/refresh` | Renovar access token | ❌ |
+| POST | `/auth/logout` | Logout (revogar refresh) | ❌ |
+| POST | `/auth/logout-all` | Logout de todos os dispositivos | ✅ |
+| GET | `/auth/me` | Dados do usuário logado | ✅ |
+
+##### Exemplos de uso
+
+**Registro:**
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "usuario@email.com",
+    "password": "Senha123!",
+    "firstName": "João",
+    "lastName": "Silva"
+  }'
+```
+
+**Login:**
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "usuario@email.com",
+    "password": "Senha123!"
+  }'
+```
+
+**Resposta do Login/Registro:**
+```json
+{
+  "user": {
+    "id": "cuid...",
+    "email": "usuario@email.com",
+    "firstName": "João",
+    "lastName": "Silva",
+    "role": "CUSTOMER",
+    "status": "PENDING_VERIFICATION"
+  },
+  "tokens": {
+    "accessToken": "eyJhbG...",
+    "refreshToken": "abc123...",
+    "expiresIn": 900
+  }
+}
+```
+
+**Refresh Token:**
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "abc123..."}'
+```
+
+**Rota autenticada:**
+```bash
+curl http://localhost:3000/api/v1/auth/me \
+  -H "Authorization: Bearer eyJhbG..."
+```
+
+#### Usuários (`/api/v1/users`) - Admin only
+
+| Método | Endpoint | Descrição | Auth |
+|--------|----------|-----------|------|
+| GET | `/users` | Listar usuários | ✅ ADMIN |
+| GET | `/users/:id` | Buscar usuário | ✅ ADMIN |
+| PATCH | `/users/:id/status` | Alterar status | ✅ ADMIN |
+| PATCH | `/users/:id/role` | Alterar role | ✅ ADMIN |
 
 ## 🛡️ Segurança
 

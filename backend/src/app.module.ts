@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/prisma/prisma.module';
 import { HealthModule } from '@modules/health/health.module';
+import { AuthModule } from '@modules/auth/auth.module';
+import { UsersModule } from '@modules/users/users.module';
 
 @Module({
   imports: [
@@ -17,9 +19,11 @@ import { HealthModule } from '@modules/health/health.module';
     // Módulo de Health Check
     HealthModule,
     
+    // Módulos de autenticação e usuários
+    AuthModule,
+    UsersModule,
+    
     // Módulos de domínio serão adicionados conforme as etapas
-    // AuthModule,
-    // UsersModule,
     // MerchantsModule,
     // ProductsModule,
     // OrdersModule,
