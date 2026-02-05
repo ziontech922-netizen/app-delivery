@@ -23,9 +23,11 @@ delivery-platform/
 │   │   │   ├── merchants/    # Gestão de estabelecimentos
 │   │   │   ├── products/     # Produtos e categorias
 │   │   │   ├── orders/       # Pedidos
+│   │   │   ├── realtime/     # WebSocket / Socket.IO
 │   │   │   └── health/       # Health checks
 │   │   ├── shared/           # Código compartilhado
 │   │   │   ├── prisma/       # Serviço do Prisma
+│   │   │   ├── redis/        # Serviço do Redis (cache/pubsub)
 │   │   │   ├── guards/       # Guards de autenticação
 │   │   │   ├── decorators/   # Decorators customizados
 │   │   │   └── filters/      # Exception filters
@@ -178,9 +180,11 @@ fly status
 | Variável | Descrição | Obrigatória |
 |----------|-----------|-------------|
 | `DATABASE_URL` | URL de conexão PostgreSQL | ✅ |
-| `JWT_SECRET` | Chave secreta para tokens JWT | ✅ |
+| `JWT_ACCESS_SECRET` | Chave secreta para access tokens JWT | ✅ |
 | `JWT_REFRESH_SECRET` | Chave para refresh tokens | ✅ |
-| `JWT_EXPIRES_IN` | Tempo de expiração do token | ❌ (default: 15m) |
+| `JWT_ACCESS_EXPIRES_IN` | Tempo de expiração do access token | ❌ (default: 15m) |
+| `JWT_REFRESH_EXPIRES_IN` | Tempo de expiração do refresh token | ❌ (default: 7d) |
+| `REDIS_URL` | URL de conexão Redis | ❌ (modo degradado se ausente) |
 | `PORT` | Porta da aplicação | ❌ (default: 3000) |
 | `NODE_ENV` | Ambiente (development/production) | ❌ |
 | `CORS_ORIGINS` | Origens permitidas para CORS | ❌ |
@@ -288,7 +292,153 @@ curl http://localhost:3000/api/v1/auth/me \
 | PATCH | `/users/:id/status` | Alterar status | ✅ ADMIN |
 | PATCH | `/users/:id/role` | Alterar role | ✅ ADMIN |
 
-## 🛡️ Segurança
+## � WebSocket / Realtime
+
+O sistema utiliza Socket.IO para comunicação em tempo real entre clientes e servidor.
+
+### Conectando ao WebSocket
+
+```javascript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  auth: {
+    token: 'seu_jwt_access_token'
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Alternativa: via header
+const socket = io('http://localhost:3000', {
+  extraHeaders: {
+    Authorization: 'Bearer seu_jwt_access_token'
+  }
+});
+
+// Alternativa: via query string
+const socket = io('http://localhost:3000?token=seu_jwt_access_token');
+```
+
+### Eventos de Conexão
+
+```javascript
+// Conexão bem-sucedida
+socket.on('connection:success', (data) => {
+  console.log('Conectado!', data);
+  // { userId: "...", socketId: "...", rooms: ["user:id", "customer:id"] }
+});
+
+// Erro de conexão
+socket.on('connection:error', (data) => {
+  console.error('Erro:', data.error);
+});
+```
+
+### Salas Automáticas
+
+Ao conectar, o usuário entra automaticamente nas salas baseadas em seu role:
+
+| Role | Salas |
+|------|-------|
+| CUSTOMER | `user:{userId}`, `customer:{userId}` |
+| MERCHANT | `user:{userId}`, `merchant:{merchantId}` |
+| DRIVER | `user:{userId}`, `driver:{driverId}` (futuro) |
+
+### Entrar em Sala de Pedido
+
+```javascript
+// Entrar na sala de um pedido específico (validação de ownership)
+socket.emit('order:join', { orderId: 'uuid-do-pedido' }, (response) => {
+  if (response.success) {
+    console.log('Entrou na sala:', response.room);
+  } else {
+    console.error('Erro:', response.error);
+  }
+});
+
+// Sair da sala
+socket.emit('order:leave', { orderId: 'uuid-do-pedido' });
+```
+
+### Eventos de Pedidos
+
+```javascript
+// Novo pedido criado (merchant recebe)
+socket.on('order:created', (data) => {
+  console.log('Novo pedido!', data);
+  // {
+  //   orderId: "...",
+  //   orderNumber: "20260205-ABC123",
+  //   customerId: "...",
+  //   merchantId: "...",
+  //   total: 59.90,
+  //   itemsCount: 3,
+  //   createdAt: "2026-02-05T12:00:00.000Z"
+  // }
+});
+
+// Status do pedido atualizado
+socket.on('order:status_updated', (data) => {
+  console.log('Status atualizado!', data);
+  // {
+  //   orderId: "...",
+  //   orderNumber: "20260205-ABC123",
+  //   previousStatus: "PENDING",
+  //   newStatus: "CONFIRMED",
+  //   updatedAt: "2026-02-05T12:05:00.000Z"
+  // }
+});
+
+// Pedido cancelado
+socket.on('order:cancelled', (data) => {
+  console.log('Pedido cancelado!', data);
+  // {
+  //   orderId: "...",
+  //   orderNumber: "20260205-ABC123",
+  //   cancelledBy: "merchant",
+  //   reason: "Produto indisponível",
+  //   cancelledAt: "2026-02-05T12:10:00.000Z"
+  // }
+});
+```
+
+### Heartbeat (Keep-alive)
+
+```javascript
+// Enviar ping para manter presença ativa
+setInterval(() => {
+  socket.emit('ping', {}, (response) => {
+    console.log('Pong:', response.timestamp);
+  });
+}, 60000); // A cada 1 minuto
+```
+
+### Eventos de Sala
+
+```javascript
+socket.on('room:joined', (data) => {
+  console.log('Entrou na sala:', data.room);
+});
+
+socket.on('room:left', (data) => {
+  console.log('Saiu da sala:', data.room);
+});
+
+socket.on('room:error', (data) => {
+  console.error('Erro na sala:', data.room, data.error);
+});
+```
+
+### Redis (Cache)
+
+O sistema usa Redis para:
+- **Presença online**: Saber quais usuários estão conectados
+- **Cache de status**: Cache rápido do status dos pedidos
+- **Pedidos ativos**: Cache dos pedidos ativos por merchant
+
+⚠️ **Modo Degradado**: Se o Redis não estiver disponível, o sistema continua funcionando normalmente, apenas sem cache/presença.
+
+## �🛡️ Segurança
 
 - Senhas hashadas com Argon2
 - JWT com refresh tokens

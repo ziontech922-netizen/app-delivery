@@ -4,16 +4,23 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { OrderStatus, PaymentStatus, MerchantStatus } from '@prisma/client';
 import { PrismaService } from '@shared/prisma';
+import { RealtimeService } from '@modules/realtime/realtime.service';
 import { CreateOrderDto, UpdateOrderStatusDto, CreateAddressDto } from './dto';
 
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => RealtimeService))
+    private readonly realtime: RealtimeService,
+  ) {}
 
   // =============================================
   // CUSTOMER - ADDRESSES
@@ -168,6 +175,16 @@ export class OrdersService {
     });
 
     this.logger.log(`Pedido criado: ${order.orderNumber} por customer ${userId}`);
+
+    // Emitir evento em tempo real (após commit no banco)
+    await this.realtime.emitOrderCreated(
+      order.id,
+      order.orderNumber,
+      userId,
+      dto.merchantId,
+      total,
+      orderItems.length,
+    );
 
     return this.sanitizeOrder(order);
   }
@@ -383,6 +400,27 @@ export class OrdersService {
     });
 
     this.logger.log(`Pedido ${orderId} atualizado para ${dto.status}`);
+
+    // Emitir evento em tempo real (após commit no banco)
+    if (dto.status === OrderStatus.CANCELLED) {
+      await this.realtime.emitOrderCancelled(
+        orderId,
+        order.orderNumber,
+        order.customerId,
+        order.merchantId,
+        'merchant',
+        dto.cancellationReason,
+      );
+    } else {
+      await this.realtime.emitOrderStatusUpdated(
+        orderId,
+        order.orderNumber,
+        order.customerId,
+        order.merchantId,
+        order.status,
+        dto.status,
+      );
+    }
 
     return this.sanitizeOrder(updated);
   }
