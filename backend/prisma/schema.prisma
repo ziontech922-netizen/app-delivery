@@ -1,0 +1,297 @@
+// Prisma Schema - Delivery Platform
+// Única fonte de verdade para o modelo de dados
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// ENUMS
+// ===========================================
+
+enum UserRole {
+  CUSTOMER
+  MERCHANT
+  DRIVER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum MerchantStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
+  CASH
+}
+
+// ===========================================
+// MODELS
+// ===========================================
+
+model User {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  passwordHash      String     @map("password_hash")
+  firstName         String     @map("first_name")
+  lastName          String     @map("last_name")
+  phone             String?
+  role              UserRole   @default(CUSTOMER)
+  status            UserStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt   DateTime?  @map("email_verified_at")
+  lastLoginAt       DateTime?  @map("last_login_at")
+  
+  // LGPD: Registro de consentimento
+  acceptedTermsAt   DateTime?  @map("accepted_terms_at")
+  acceptedPrivacyAt DateTime?  @map("accepted_privacy_at")
+  
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  deletedAt         DateTime?  @map("deleted_at")
+  
+  // Relacionamentos
+  merchant          Merchant?
+  customerOrders    Order[]    @relation("CustomerOrders")
+  driverOrders      Order[]    @relation("DriverOrders")
+  addresses         Address[]
+  refreshTokens     RefreshToken[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  userId      String   @map("user_id")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  revokedAt   DateTime? @map("revoked_at")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model Address {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  label         String?  // Casa, Trabalho, etc.
+  street        String
+  number        String
+  complement    String?
+  neighborhood  String
+  city          String
+  state         String
+  zipCode       String   @map("zip_code")
+  latitude      Decimal? @db.Decimal(10, 8)
+  longitude     Decimal? @db.Decimal(11, 8)
+  isDefault     Boolean  @default(false) @map("is_default")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders        Order[]
+  
+  @@index([userId])
+  @@map("addresses")
+}
+
+model Merchant {
+  id              String         @id @default(cuid())
+  userId          String         @unique @map("user_id")
+  businessName    String         @map("business_name")
+  tradeName       String?        @map("trade_name")
+  document        String         @unique // CNPJ
+  description     String?
+  logoUrl         String?        @map("logo_url")
+  bannerUrl       String?        @map("banner_url")
+  
+  // Endereço do estabelecimento
+  street          String
+  number          String
+  complement      String?
+  neighborhood    String
+  city            String
+  state           String
+  zipCode         String         @map("zip_code")
+  latitude        Decimal?       @db.Decimal(10, 8)
+  longitude       Decimal?       @db.Decimal(11, 8)
+  
+  // Configurações
+  status          MerchantStatus @default(PENDING_APPROVAL)
+  isOpen          Boolean        @default(false) @map("is_open")
+  minimumOrder    Decimal        @default(0) @db.Decimal(10, 2) @map("minimum_order")
+  deliveryFee     Decimal        @default(0) @db.Decimal(10, 2) @map("delivery_fee")
+  estimatedTime   Int            @default(30) @map("estimated_time") // minutos
+  
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories      Category[]
+  products        Product[]
+  orders          Order[]
+  
+  @@index([status])
+  @@index([city, state])
+  @@map("merchants")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  merchantId  String    @map("merchant_id")
+  name        String
+  description String?
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  products    Product[]
+  
+  @@index([merchantId])
+  @@map("categories")
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  merchantId  String      @map("merchant_id")
+  categoryId  String?     @map("category_id")
+  name        String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  imageUrl    String?     @map("image_url")
+  isAvailable Boolean     @default(true) @map("is_available")
+  sortOrder   Int         @default(0) @map("sort_order")
+  
+  // Controle de estoque básico
+  hasStock    Boolean     @default(false) @map("has_stock")
+  stockQty    Int?        @map("stock_qty")
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+  
+  merchant    Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  orderItems  OrderItem[]
+  
+  @@index([merchantId])
+  @@index([categoryId])
+  @@index([isAvailable])
+  @@map("products")
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique @map("order_number")
+  customerId      String        @map("customer_id")
+  merchantId      String        @map("merchant_id")
+  driverId        String?       @map("driver_id")
+  addressId       String        @map("address_id")
+  
+  status          OrderStatus   @default(PENDING)
+  
+  // Valores
+  subtotal        Decimal       @db.Decimal(10, 2)
+  deliveryFee     Decimal       @db.Decimal(10, 2) @map("delivery_fee")
+  discount        Decimal       @default(0) @db.Decimal(10, 2)
+  total           Decimal       @db.Decimal(10, 2)
+  
+  // Pagamento
+  paymentMethod   PaymentMethod @map("payment_method")
+  paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
+  
+  // Observações
+  notes           String?
+  
+  // Timestamps de status
+  confirmedAt     DateTime?     @map("confirmed_at")
+  preparingAt     DateTime?     @map("preparing_at")
+  readyAt         DateTime?     @map("ready_at")
+  pickedUpAt      DateTime?     @map("picked_up_at")
+  deliveredAt     DateTime?     @map("delivered_at")
+  cancelledAt     DateTime?     @map("cancelled_at")
+  cancellationReason String?    @map("cancellation_reason")
+  
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  
+  customer        User          @relation("CustomerOrders", fields: [customerId], references: [id])
+  merchant        Merchant      @relation(fields: [merchantId], references: [id])
+  driver          User?         @relation("DriverOrders", fields: [driverId], references: [id])
+  address         Address       @relation(fields: [addressId], references: [id])
+  items           OrderItem[]
+  
+  @@index([customerId])
+  @@index([merchantId])
+  @@index([driverId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String   @map("order_id")
+  productId   String   @map("product_id")
+  productName String   @map("product_name") // Snapshot do nome
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2) @map("unit_price") // Snapshot do preço
+  totalPrice  Decimal  @db.Decimal(10, 2) @map("total_price")
+  notes       String?
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
