@@ -10,6 +10,7 @@ import { ProductsModule } from '@modules/products/products.module';
 import { OrdersModule } from '@modules/orders/orders.module';
 import { RealtimeModule } from '@modules/realtime/realtime.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
+import { AdminModule } from '@modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -42,6 +43,9 @@ import { PaymentsModule } from '@modules/payments/payments.module';
     
     // Payments - ETAPA 5
     PaymentsModule,
+    
+    // Admin - ETAPA 6
+    AdminModule,
   ],
   controllers: [],
   providers: [],

@@ -68,6 +68,20 @@ enum PaymentMethod {
   CASH
 }
 
+enum AdminAction {
+  MERCHANT_APPROVED
+  MERCHANT_SUSPENDED
+  MERCHANT_ACTIVATED
+  MERCHANT_REJECTED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  USER_SUSPENDED
+  USER_ACTIVATED
+  USER_ROLE_CHANGED
+  PAYMENT_REFUNDED
+  SYSTEM_CONFIG_CHANGED
+}
+
 // ===========================================
 // MODELS
 // ===========================================
@@ -98,6 +112,7 @@ model User {
   driverOrders      Order[]    @relation("DriverOrders")
   addresses         Address[]
   refreshTokens     RefreshToken[]
+  adminAuditLogs    AdminAuditLog[]
   
   @@index([email])
   @@index([role])
@@ -378,4 +393,36 @@ model Payment {
   @@index([externalId])
   @@index([status])
   @@map("payments")
+}
+
+// ===========================================
+// ADMIN / AUDIT
+// ===========================================
+
+model AdminAuditLog {
+  id            String      @id @default(cuid())
+  adminId       String      @map("admin_id")
+  action        AdminAction
+  targetType    String      @map("target_type") // 'merchant', 'order', 'user', 'payment'
+  targetId      String      @map("target_id")
+  
+  // Detalhes da ação
+  previousValue Json?       @map("previous_value")
+  newValue      Json?       @map("new_value")
+  reason        String?
+  metadata      Json?
+  
+  // IP e User Agent para auditoria
+  ipAddress     String?     @map("ip_address")
+  userAgent     String?     @map("user_agent")
+  
+  createdAt     DateTime    @default(now()) @map("created_at")
+  
+  admin         User        @relation(fields: [adminId], references: [id])
+  
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
 }
