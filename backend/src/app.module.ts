@@ -9,6 +9,7 @@ import { MerchantsModule } from '@modules/merchants/merchants.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { OrdersModule } from '@modules/orders/orders.module';
 import { RealtimeModule } from '@modules/realtime/realtime.module';
+import { PaymentsModule } from '@modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -38,6 +39,9 @@ import { RealtimeModule } from '@modules/realtime/realtime.module';
     
     // Realtime - ETAPA 4
     RealtimeModule,
+    
+    // Payments - ETAPA 5
+    PaymentsModule,
   ],
   controllers: [],
   providers: [],

@@ -3,11 +3,13 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PrismaModule } from '@shared/prisma';
 import { RealtimeModule } from '@modules/realtime/realtime.module';
+import { PaymentsModule } from '@modules/payments/payments.module';
 
 @Module({
   imports: [
     PrismaModule,
     forwardRef(() => RealtimeModule),
+    forwardRef(() => PaymentsModule),
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

@@ -53,6 +53,14 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentIntentStatus {
+  CREATED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
 enum PaymentMethod {
   CREDIT_CARD
   DEBIT_CARD
@@ -266,6 +274,7 @@ model Order {
   driver          User?         @relation("DriverOrders", fields: [driverId], references: [id])
   address         Address       @relation(fields: [addressId], references: [id])
   items           OrderItem[]
+  paymentIntent   PaymentIntent?
   
   @@index([customerId])
   @@index([merchantId])
@@ -294,4 +303,79 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
+}
+
+// ===========================================
+// PAYMENTS
+// ===========================================
+
+model PaymentIntent {
+  id              String              @id @default(cuid())
+  orderId         String              @unique @map("order_id")
+  amount          Decimal             @db.Decimal(10, 2)
+  currency        String              @default("BRL")
+  method          PaymentMethod
+  status          PaymentIntentStatus @default(CREATED)
+  
+  // Referência externa (ex: Mercado Pago, Stripe)
+  externalId      String?             @map("external_id")
+  externalStatus  String?             @map("external_status")
+  
+  // Metadados (não sensíveis)
+  metadata        Json?
+  
+  // Timestamps
+  expiresAt       DateTime?           @map("expires_at")
+  processedAt     DateTime?           @map("processed_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  
+  order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payments        Payment[]
+  
+  @@index([orderId])
+  @@index([externalId])
+  @@index([status])
+  @@map("payment_intents")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  paymentIntentId   String        @map("payment_intent_id")
+  amount            Decimal       @db.Decimal(10, 2)
+  status            PaymentStatus @default(PENDING)
+  
+  // Referência externa
+  externalId        String?       @map("external_id")
+  externalStatus    String?       @map("external_status")
+  
+  // Informações do pagamento (não sensíveis)
+  // Apenas últimos 4 dígitos do cartão, se aplicável
+  cardLast4         String?       @map("card_last_4")
+  cardBrand         String?       @map("card_brand")
+  
+  // PIX
+  pixKey            String?       @map("pix_key")
+  pixQrCode         String?       @map("pix_qr_code")
+  
+  // Erro/Falha
+  failureCode       String?       @map("failure_code")
+  failureMessage    String?       @map("failure_message")
+  
+  // Refund
+  refundedAt        DateTime?     @map("refunded_at")
+  refundReason      String?       @map("refund_reason")
+  refundAmount      Decimal?      @db.Decimal(10, 2) @map("refund_amount")
+  
+  // Timestamps
+  paidAt            DateTime?     @map("paid_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  
+  paymentIntent     PaymentIntent @relation(fields: [paymentIntentId], references: [id], onDelete: Cascade)
+  
+  @@index([paymentIntentId])
+  @@index([externalId])
+  @@index([status])
+  @@map("payments")
 }

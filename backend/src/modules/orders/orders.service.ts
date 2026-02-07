@@ -7,9 +7,10 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
-import { OrderStatus, PaymentStatus, MerchantStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, MerchantStatus, PaymentMethod } from '@prisma/client';
 import { PrismaService } from '@shared/prisma';
 import { RealtimeService } from '@modules/realtime/realtime.service';
+import { PaymentsService } from '@modules/payments/payments.service';
 import { CreateOrderDto, UpdateOrderStatusDto, CreateAddressDto } from './dto';
 
 @Injectable()
@@ -20,6 +21,8 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => RealtimeService))
     private readonly realtime: RealtimeService,
+    @Inject(forwardRef(() => PaymentsService))
+    private readonly payments: PaymentsService,
   ) {}
 
   // =============================================
@@ -359,6 +362,16 @@ export class OrdersService {
 
     // Validar transição de status
     this.validateStatusTransition(order.status, dto.status);
+
+    // Validar pagamento para confirmação
+    if (dto.status === OrderStatus.CONFIRMED) {
+      const paymentCheck = await this.payments.canConfirmOrder(orderId);
+      if (!paymentCheck.canConfirm) {
+        throw new BadRequestException(
+          `Não é possível confirmar pedido: ${paymentCheck.reason}`,
+        );
+      }
+    }
 
     // Preparar dados de atualização
     const updateData: any = { status: dto.status };
