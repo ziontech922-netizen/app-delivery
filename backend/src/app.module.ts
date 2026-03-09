@@ -11,6 +11,7 @@ import { OrdersModule } from '@modules/orders/orders.module';
 import { RealtimeModule } from '@modules/realtime/realtime.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { AdminModule } from '@modules/admin/admin.module';
+import { DriversModule } from '@modules/drivers/drivers.module';
 
 @Module({
   imports: [
@@ -46,6 +47,9 @@ import { AdminModule } from '@modules/admin/admin.module';
     
     // Admin - ETAPA 6
     AdminModule,
+    
+    // Drivers - ETAPA 7
+    DriversModule,
   ],
   controllers: [],
   providers: [],
