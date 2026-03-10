@@ -48,7 +48,7 @@ export default function AdminOrdersPage() {
         {
           id: '1',
           orderNumber: 'ORD-2024-001',
-          status: 'DELIVERED' as const,
+          status: 'DELIVERED',
           totalAmount: 89.90,
           deliveryFee: 8.00,
           createdAt: '2024-03-08T18:30:00Z',
@@ -65,7 +65,7 @@ export default function AdminOrdersPage() {
         {
           id: '2',
           orderNumber: 'ORD-2024-002',
-          status: 'PREPARING' as const,
+          status: 'PREPARING',
           totalAmount: 52.50,
           deliveryFee: 5.00,
           createdAt: '2024-03-08T19:45:00Z',
@@ -81,7 +81,7 @@ export default function AdminOrdersPage() {
         {
           id: '3',
           orderNumber: 'ORD-2024-003',
-          status: 'CANCELLED' as const,
+          status: 'CANCELLED',
           totalAmount: 75.00,
           deliveryFee: 6.00,
           createdAt: '2024-03-08T12:00:00Z',
@@ -94,7 +94,7 @@ export default function AdminOrdersPage() {
           ],
           deliveryAddress: { street: 'Rua Augusta', number: '500', neighborhood: 'Consolação', city: 'São Paulo' },
         },
-      ],
+      ] as AdminOrder[],
       total: 3,
     },
   });
