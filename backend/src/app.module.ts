@@ -12,6 +12,10 @@ import { RealtimeModule } from '@modules/realtime/realtime.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { AdminModule } from '@modules/admin/admin.module';
 import { DriversModule } from '@modules/drivers/drivers.module';
+import { StorageModule } from '@modules/storage/storage.module';
+import { ReviewsModule } from '@modules/reviews/reviews.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { SearchModule } from '@modules/search/search.module';
 
 @Module({
   imports: [
@@ -50,6 +54,18 @@ import { DriversModule } from '@modules/drivers/drivers.module';
     
     // Drivers - ETAPA 7
     DriversModule,
+    
+    // Storage - Upload de imagens
+    StorageModule,
+    
+    // Reviews - Avaliações
+    ReviewsModule,
+    
+    // Notifications - Push e Email
+    NotificationsModule,
+
+    // Search - Busca full-text
+    SearchModule,
   ],
   controllers: [],
   providers: [],

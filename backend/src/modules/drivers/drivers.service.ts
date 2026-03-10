@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@shared/prisma/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
+import { NotificationsService } from '@modules/notifications/notifications.service';
+import { NotificationEvent } from '@modules/notifications/dto/notification.dto';
 import {
   DriverStatus,
   VehicleType,
@@ -34,6 +36,7 @@ export class DriversService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ===========================================
@@ -481,6 +484,12 @@ export class DriversService {
       }),
     ]);
 
+    // Notificar cliente que motorista aceitou a entrega
+    await this.notifications.notifyOrderStatusChange(
+      dto.orderId,
+      NotificationEvent.DRIVER_ACCEPTED,
+    );
+
     return updatedOrder;
   }
 
@@ -528,6 +537,12 @@ export class DriversService {
         },
       }),
     ]);
+
+    // Notificar cliente que pedido foi entregue
+    await this.notifications.notifyOrderStatusChange(
+      dto.orderId,
+      NotificationEvent.ORDER_DELIVERED,
+    );
 
     return updatedOrder;
   }

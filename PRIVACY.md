@@ -1,3 +1,4 @@
+
 # Política de Privacidade
 
 **Última atualização:** 04 de fevereiro de 2026

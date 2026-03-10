@@ -130,6 +130,7 @@ model User {
   addresses         Address[]
   refreshTokens     RefreshToken[]
   adminAuditLogs    AdminAuditLog[]
+  reviews           Review[]
   
   @@index([email])
   @@index([role])
@@ -205,6 +206,10 @@ model Merchant {
   deliveryFee     Decimal        @default(0) @db.Decimal(10, 2) @map("delivery_fee")
   estimatedTime   Int            @default(30) @map("estimated_time") // minutos
   
+  // Avaliações
+  averageRating   Decimal?       @db.Decimal(3, 2) @map("average_rating")
+  totalReviews    Int            @default(0) @map("total_reviews")
+  
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   deletedAt       DateTime?      @map("deleted_at")
@@ -213,6 +218,7 @@ model Merchant {
   categories      Category[]
   products        Product[]
   orders          Order[]
+  reviews         Review[]
   
   @@index([status])
   @@index([city, state])
@@ -307,6 +313,7 @@ model Order {
   address         Address       @relation(fields: [addressId], references: [id])
   items           OrderItem[]
   paymentIntent   PaymentIntent?
+  review          Review?
   
   @@index([customerId])
   @@index([merchantId])
@@ -496,6 +503,7 @@ model DriverProfile {
   
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   locations       DriverLocation[]
+  reviews         Review[]      @relation("DriverReviews")
   
   @@index([status])
   @@index([vehicleType])
@@ -525,4 +533,38 @@ model DriverLocation {
   @@index([createdAt])
   @@index([orderId])
   @@map("driver_locations")
+}
+
+// ===========================================
+// REVIEWS
+// ===========================================
+
+model Review {
+  id            String         @id @default(cuid())
+  orderId       String         @unique @map("order_id")
+  customerId    String         @map("customer_id")
+  merchantId    String         @map("merchant_id")
+  driverId      String?        @map("driver_id")
+  
+  // Avaliações
+  merchantRating Int           @map("merchant_rating") // 1-5
+  driverRating   Int?          @map("driver_rating")   // 1-5
+  
+  // Comentários
+  merchantComment String?      @map("merchant_comment")
+  driverComment   String?      @map("driver_comment")
+  
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer      User           @relation(fields: [customerId], references: [id])
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
+  driver        DriverProfile? @relation("DriverReviews", fields: [driverId], references: [id])
+  
+  @@index([merchantId])
+  @@index([customerId])
+  @@index([driverId])
+  @@index([createdAt])
+  @@map("reviews")
 }

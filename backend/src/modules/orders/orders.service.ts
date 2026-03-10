@@ -11,6 +11,8 @@ import { OrderStatus, PaymentStatus, MerchantStatus, PaymentMethod } from '@pris
 import { PrismaService } from '@shared/prisma';
 import { RealtimeService } from '@modules/realtime/realtime.service';
 import { PaymentsService } from '@modules/payments/payments.service';
+import { NotificationsService } from '@modules/notifications/notifications.service';
+import { NotificationEvent } from '@modules/notifications/dto/notification.dto';
 import { CreateOrderDto, UpdateOrderStatusDto, CreateAddressDto } from './dto';
 
 @Injectable()
@@ -23,6 +25,7 @@ export class OrdersService {
     private readonly realtime: RealtimeService,
     @Inject(forwardRef(() => PaymentsService))
     private readonly payments: PaymentsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // =============================================
@@ -188,6 +191,9 @@ export class OrdersService {
       total,
       orderItems.length,
     );
+
+    // Notificar merchant sobre novo pedido
+    await this.notifications.notifyMerchantNewOrder(order.id);
 
     return this.sanitizeOrder(order);
   }
@@ -424,6 +430,12 @@ export class OrdersService {
         'merchant',
         dto.cancellationReason,
       );
+      // Notificar cliente sobre cancelamento
+      await this.notifications.notifyOrderStatusChange(
+        orderId,
+        NotificationEvent.ORDER_CANCELLED,
+        dto.cancellationReason,
+      );
     } else {
       await this.realtime.emitOrderStatusUpdated(
         orderId,
@@ -433,9 +445,32 @@ export class OrdersService {
         order.status,
         dto.status,
       );
+      // Enviar notificação baseada no novo status
+      await this.sendStatusNotification(orderId, dto.status);
     }
 
     return this.sanitizeOrder(updated);
+  }
+
+  /**
+   * Send notification based on order status
+   */
+  private async sendStatusNotification(
+    orderId: string,
+    status: OrderStatus,
+  ): Promise<void> {
+    const eventMap: Partial<Record<OrderStatus, NotificationEvent>> = {
+      [OrderStatus.CONFIRMED]: NotificationEvent.ORDER_CONFIRMED,
+      [OrderStatus.PREPARING]: NotificationEvent.ORDER_PREPARING,
+      [OrderStatus.READY_FOR_PICKUP]: NotificationEvent.ORDER_READY,
+      [OrderStatus.OUT_FOR_DELIVERY]: NotificationEvent.DRIVER_ACCEPTED,
+      [OrderStatus.DELIVERED]: NotificationEvent.ORDER_DELIVERED,
+    };
+
+    const event = eventMap[status];
+    if (event) {
+      await this.notifications.notifyOrderStatusChange(orderId, event);
+    }
   }
 
   // =============================================
