@@ -183,6 +183,7 @@ export interface CreateOrderRequest {
   paymentMethod: PaymentMethod;
   items: CreateOrderItemRequest[];
   notes?: string;
+  couponCode?: string;
 }
 
 export interface CreateOrderItemRequest {

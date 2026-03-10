@@ -16,6 +16,7 @@ import { StorageModule } from '@modules/storage/storage.module';
 import { ReviewsModule } from '@modules/reviews/reviews.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { SearchModule } from '@modules/search/search.module';
+import { CouponsModule } from '@modules/coupons/coupons.module';
 
 @Module({
   imports: [
@@ -66,6 +67,9 @@ import { SearchModule } from '@modules/search/search.module';
 
     // Search - Busca full-text
     SearchModule,
+
+    // Coupons - Sistema de cupons
+    CouponsModule,
   ],
   controllers: [],
   providers: [],

@@ -55,6 +55,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 }
 
 // =============================================

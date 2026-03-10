@@ -13,6 +13,7 @@ import { RealtimeService } from '@modules/realtime/realtime.service';
 import { PaymentsService } from '@modules/payments/payments.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 import { NotificationEvent } from '@modules/notifications/dto/notification.dto';
+import { CouponsService } from '@modules/coupons/coupons.service';
 import { CreateOrderDto, UpdateOrderStatusDto, CreateAddressDto } from './dto';
 
 @Injectable()
@@ -26,6 +27,8 @@ export class OrdersService {
     @Inject(forwardRef(() => PaymentsService))
     private readonly payments: PaymentsService,
     private readonly notifications: NotificationsService,
+    @Inject(forwardRef(() => CouponsService))
+    private readonly coupons: CouponsService,
   ) {}
 
   // =============================================
@@ -147,7 +150,40 @@ export class OrdersService {
     }
 
     const deliveryFee = Number(merchant.deliveryFee);
-    const total = subtotal + deliveryFee;
+    
+    // Aplicar cupom se fornecido
+    let discount = 0;
+    let couponCode: string | null = null;
+    let couponId: string | null = null;
+
+    if (dto.couponCode) {
+      const couponResult = await this.coupons.validateCoupon(
+        {
+          code: dto.couponCode,
+          merchantId: dto.merchantId,
+          subtotal,
+        },
+        userId,
+      );
+
+      if (!couponResult.valid) {
+        throw new BadRequestException(couponResult.error || 'Cupom inválido');
+      }
+
+      discount = couponResult.discount || 0;
+      couponCode = couponResult.code || null;
+
+      // Get coupon ID for relation
+      const coupon = await this.prisma.coupon.findUnique({
+        where: { code: couponCode! },
+        select: { id: true },
+      });
+      couponId = coupon?.id || null;
+
+      this.logger.log(`Cupom ${couponCode} aplicado: desconto de R$ ${discount}`);
+    }
+
+    const total = subtotal + deliveryFee - discount;
 
     // Gerar número do pedido
     const orderNumber = await this.generateOrderNumber();
@@ -159,10 +195,12 @@ export class OrdersService {
         customerId: userId,
         merchantId: dto.merchantId,
         addressId: dto.addressId,
+        couponId,
+        couponCode,
         status: OrderStatus.PENDING,
         subtotal,
         deliveryFee,
-        discount: 0,
+        discount,
         total,
         paymentMethod: dto.paymentMethod,
         paymentStatus: PaymentStatus.PENDING,
@@ -179,6 +217,11 @@ export class OrdersService {
         address: true,
       },
     });
+
+    // Incrementar uso do cupom
+    if (couponCode) {
+      await this.coupons.applyCoupon(couponCode);
+    }
 
     this.logger.log(`Pedido criado: ${order.orderNumber} por customer ${userId}`);
 

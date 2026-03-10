@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { MapPin, CreditCard, Banknote, Plus, Check, ArrowLeft } from 'lucide-react';
+import { MapPin, CreditCard, Banknote, Plus, Check, ArrowLeft, Tag, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCartStore, useAuthStore, useUIStore } from '@/store';
 import { orderService, addressService } from '@/services/order.service';
+import { couponService, ApplyCouponResponse } from '@/services/coupon.service';
 import { formatCurrency } from '@/utils/format';
 import { Button, Card, Input } from '@/components/ui';
 import type { Address, PaymentMethod } from '@/types';
@@ -26,11 +27,34 @@ export default function CheckoutPage() {
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>('PIX');
   const [notes, setNotes] = useState('');
   const [changeFor, setChangeFor] = useState('');
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<ApplyCouponResponse | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   const { data: addresses = [] } = useQuery({
     queryKey: ['addresses'],
     queryFn: addressService.list,
     enabled: isAuthenticated,
+  });
+
+  // Coupon validation mutation
+  const validateCouponMutation = useMutation({
+    mutationFn: couponService.validate,
+    onSuccess: (result) => {
+      if (result.valid) {
+        setAppliedCoupon(result);
+        setCouponError(null);
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(result.error || 'Cupom inválido');
+      }
+    },
+    onError: () => {
+      setAppliedCoupon(null);
+      setCouponError('Erro ao validar cupom');
+    },
   });
 
   const createOrderMutation = useMutation({
@@ -43,7 +67,24 @@ export default function CheckoutPage() {
 
   const subtotal = getTotal();
   const deliveryFee = merchant?.deliveryFee || 0;
-  const total = subtotal + deliveryFee;
+  const discount = appliedCoupon?.discount || 0;
+  const total = subtotal + deliveryFee - discount;
+
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim() || !merchant) return;
+    
+    validateCouponMutation.mutate({
+      code: couponCode.trim(),
+      merchantId: merchant.id,
+      subtotal,
+    });
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError(null);
+  };
 
   const handleSubmit = () => {
     if (!selectedAddress) {
@@ -66,6 +107,7 @@ export default function CheckoutPage() {
         notes: '',
       })),
       notes,
+      couponCode: appliedCoupon?.code || undefined,
       ...(selectedPayment === 'CASH' && changeFor ? { changeFor: parseFloat(changeFor) } : {}),
     });
   };
@@ -217,6 +259,60 @@ export default function CheckoutPage() {
               rows={3}
             />
           </Card>
+
+          {/* Coupon */}
+          <Card variant="bordered">
+            <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Tag className="h-5 w-5 text-primary-600" />
+              Cupom de Desconto
+            </h2>
+
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div>
+                  <p className="font-medium text-green-800">{appliedCoupon.code}</p>
+                  {appliedCoupon.description && (
+                    <p className="text-sm text-green-600">{appliedCoupon.description}</p>
+                  )}
+                  <p className="text-sm text-green-700 font-medium">
+                    Desconto: {formatCurrency(appliedCoupon.discount || 0)}
+                  </p>
+                </div>
+                <button
+                  onClick={handleRemoveCoupon}
+                  className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponError(null);
+                    }}
+                    placeholder="Digite o código do cupom"
+                    className="flex-1"
+                    error={couponError || undefined}
+                  />
+                  <Button
+                    onClick={handleApplyCoupon}
+                    variant="outline"
+                    isLoading={validateCouponMutation.isPending}
+                    disabled={!couponCode.trim()}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+                {couponError && (
+                  <p className="mt-2 text-sm text-red-600">{couponError}</p>
+                )}
+              </div>
+            )}
+          </Card>
         </div>
 
         {/* Order Summary */}
@@ -257,6 +353,12 @@ export default function CheckoutPage() {
                   {deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}
                 </span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-green-600">Desconto ({appliedCoupon?.code})</span>
+                  <span className="text-green-600">-{formatCurrency(discount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                 <span>Total</span>
                 <span className="text-primary-600">{formatCurrency(total)}</span>

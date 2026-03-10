@@ -98,6 +98,11 @@ enum VehicleType {
   VAN
 }
 
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
 // ===========================================
 // MODELS
 // ===========================================
@@ -219,6 +224,7 @@ model Merchant {
   products        Product[]
   orders          Order[]
   reviews         Review[]
+  coupons         Coupon[]
   
   @@index([status])
   @@index([city, state])
@@ -279,6 +285,7 @@ model Order {
   merchantId      String        @map("merchant_id")
   driverId        String?       @map("driver_id")
   addressId       String        @map("address_id")
+  couponId        String?       @map("coupon_id")
   
   status          OrderStatus   @default(PENDING)
   
@@ -286,6 +293,7 @@ model Order {
   subtotal        Decimal       @db.Decimal(10, 2)
   deliveryFee     Decimal       @db.Decimal(10, 2) @map("delivery_fee")
   discount        Decimal       @default(0) @db.Decimal(10, 2)
+  couponCode      String?       @map("coupon_code") // Snapshot do código usado
   total           Decimal       @db.Decimal(10, 2)
   
   // Pagamento
@@ -311,6 +319,7 @@ model Order {
   merchant        Merchant      @relation(fields: [merchantId], references: [id])
   driver          User?         @relation("DriverOrders", fields: [driverId], references: [id])
   address         Address       @relation(fields: [addressId], references: [id])
+  coupon          Coupon?       @relation(fields: [couponId], references: [id])
   items           OrderItem[]
   paymentIntent   PaymentIntent?
   review          Review?
@@ -321,6 +330,7 @@ model Order {
   @@index([status])
   @@index([orderNumber])
   @@index([createdAt])
+  @@index([couponId])
   @@map("orders")
 }
 
@@ -567,4 +577,50 @@ model Review {
   @@index([driverId])
   @@index([createdAt])
   @@map("reviews")
+}
+
+// ===========================================
+// COUPONS
+// ===========================================
+
+model Coupon {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  type          CouponType  // PERCENT ou FIXED
+  value         Decimal     @db.Decimal(10, 2) // Percentual ou valor fixo
+  
+  // Limites
+  maxUses       Int?        @map("max_uses")      // Null = ilimitado
+  currentUses   Int         @default(0) @map("current_uses")
+  maxUsesPerUser Int?       @map("max_uses_per_user")
+  
+  // Validade
+  startsAt      DateTime?   @map("starts_at")
+  expiresAt     DateTime?   @map("expires_at")
+  
+  // Restrições
+  minOrderValue Decimal?    @db.Decimal(10, 2) @map("min_order_value")
+  maxDiscount   Decimal?    @db.Decimal(10, 2) @map("max_discount") // Limite máximo para cupons percentuais
+  
+  // Escopo: null = global, merchantId = específico para merchant
+  merchantId    String?     @map("merchant_id")
+  
+  // Descrição
+  description   String?
+  
+  // Status
+  isActive      Boolean     @default(true) @map("is_active")
+  
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  deletedAt     DateTime?   @map("deleted_at")
+  
+  merchant      Merchant?   @relation(fields: [merchantId], references: [id])
+  orders        Order[]
+  
+  @@index([code])
+  @@index([merchantId])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@map("coupons")
 }
