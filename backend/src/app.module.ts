@@ -18,6 +18,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { SearchModule } from '@modules/search/search.module';
 import { CouponsModule } from '@modules/coupons/coupons.module';
 import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.module';
+import { EtaModule } from '@modules/eta/eta.module';
 
 @Module({
   imports: [
@@ -74,6 +75,9 @@ import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.m
 
     // Driver Matching - Sistema de atribuição de entregadores
     DriverMatchingModule,
+
+    // ETA - Sistema de tempo estimado de entrega
+    EtaModule,
   ],
   controllers: [],
   providers: [],

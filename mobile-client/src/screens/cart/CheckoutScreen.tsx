@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { orderService, addressService } from '../../services/orderService';
+import { etaService } from '../../services/etaService';
 import { useCartStore } from '../../stores/cartStore';
 import { CartStackParamList } from '../../navigation/types';
 import { Address, Coupon } from '../../types';
@@ -63,6 +64,18 @@ export default function CheckoutScreen() {
   const { data: addresses, isLoading: loadingAddresses } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressService.getMyAddresses(),
+  });
+
+  // Fetch ETA when address is selected
+  const { data: etaData } = useQuery({
+    queryKey: ['eta', restaurantId, selectedAddress?.latitude, selectedAddress?.longitude],
+    queryFn: () =>
+      etaService.calculateEta(
+        restaurantId!,
+        selectedAddress!.latitude!,
+        selectedAddress!.longitude!,
+      ),
+    enabled: !!restaurantId && !!selectedAddress?.latitude && !!selectedAddress?.longitude,
   });
 
   // Set default address
@@ -203,6 +216,47 @@ export default function CheckoutScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* ETA Display */}
+        {etaData && (
+          <View style={styles.etaSection}>
+            <View style={styles.etaHeader}>
+              <Ionicons name="time-outline" size={24} color={COLORS.success} />
+              <View style={styles.etaInfo}>
+                <Text style={styles.etaLabel}>Tempo estimado de entrega</Text>
+                <Text style={styles.etaValue}>{etaData.displayTime}</Text>
+              </View>
+            </View>
+            <View style={styles.etaDetails}>
+              <View style={styles.etaDetailItem}>
+                <Ionicons name="restaurant-outline" size={16} color={COLORS.gray} />
+                <Text style={styles.etaDetailText}>
+                  Preparo: ~{etaData.breakdown.preparationTimeMinutes} min
+                </Text>
+              </View>
+              <View style={styles.etaDetailItem}>
+                <Ionicons name="bicycle-outline" size={16} color={COLORS.gray} />
+                <Text style={styles.etaDetailText}>
+                  Entrega: ~{etaData.breakdown.merchantToCustomerMinutes} min
+                </Text>
+              </View>
+              <View style={styles.etaDetailItem}>
+                <Ionicons name="navigate-outline" size={16} color={COLORS.gray} />
+                <Text style={styles.etaDetailText}>
+                  Distância: {etaData.distances.merchantToCustomerKm.toFixed(1)} km
+                </Text>
+              </View>
+            </View>
+            {etaData.factors && etaData.factors.length > 0 && (
+              <View style={styles.etaFactors}>
+                <Ionicons name="information-circle-outline" size={14} color={COLORS.gray} />
+                <Text style={styles.etaFactorsText}>
+                  {etaData.factors.join(' • ')}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Payment Method */}
         <View style={styles.section}>
@@ -438,6 +492,59 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '500',
     marginLeft: 8,
+  },
+  etaSection: {
+    padding: 16,
+    backgroundColor: '#f0fdf4',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
+  },
+  etaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  etaInfo: {
+    flex: 1,
+  },
+  etaLabel: {
+    fontSize: 13,
+    color: COLORS.gray,
+  },
+  etaValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.success,
+  },
+  etaDetails: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#dcfce7',
+    gap: 8,
+  },
+  etaDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  etaDetailText: {
+    fontSize: 13,
+    color: COLORS.gray,
+  },
+  etaFactors: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#dcfce7',
+  },
+  etaFactorsText: {
+    fontSize: 12,
+    color: COLORS.gray,
+    fontStyle: 'italic',
   },
   paymentMethods: {
     gap: 12,

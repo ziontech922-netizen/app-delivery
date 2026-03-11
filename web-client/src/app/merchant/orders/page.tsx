@@ -16,9 +16,11 @@ import {
   X,
   Check,
   Bell,
+  Timer,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { merchantDashboardService, MerchantOrder } from '@/services/merchant.dashboard.service';
+import { etaService, OrderEtaResult } from '@/services/eta.service';
 import { formatCurrency } from '@/utils/format';
 
 const statusConfig: Record<
@@ -382,6 +384,16 @@ export default function MerchantOrdersPage() {
                   <div className="flex items-start gap-2 mb-3 p-2 bg-yellow-50 rounded-lg">
                     <FileText className="h-4 w-4 text-yellow-600 mt-0.5" />
                     <p className="text-sm text-yellow-700">{order.notes}</p>
+                  </div>
+                )}
+
+                {/* ETA Display */}
+                {order.estimatedDeliveryTime && !['DELIVERED', 'CANCELLED'].includes(order.status) && (
+                  <div className="flex items-center gap-2 mb-3 p-2 bg-blue-50 rounded-lg">
+                    <Timer className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-700">
+                      Entrega estimada: <strong>{order.estimatedDeliveryTime} min</strong>
+                    </span>
                   </div>
                 )}
 

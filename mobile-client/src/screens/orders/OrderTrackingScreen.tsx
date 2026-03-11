@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { orderService, Order } from '../../services/orderService';
 import { socketService } from '../../services/socketService';
+import { etaService, OrderEtaResult } from '../../services/etaService';
 import { RootStackParamList } from '../../navigation/types';
 
 type OrderTrackingRouteProp = RouteProp<RootStackParamList, 'OrderTracking'>;
@@ -96,6 +97,14 @@ export default function OrderTrackingScreen() {
     queryKey: ['order', orderId],
     queryFn: () => orderService.getOrderById(orderId),
     refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Fetch live ETA
+  const { data: etaData } = useQuery({
+    queryKey: ['orderEta', orderId],
+    queryFn: () => etaService.getOrderEta(orderId),
+    refetchInterval: 15000, // Refetch every 15 seconds
+    enabled: !!order && !['DELIVERED', 'CANCELLED'].includes(order.status),
   });
 
   // Subscribe to real-time updates
@@ -275,7 +284,51 @@ export default function OrderTrackingScreen() {
           </View>
         )}
 
-        {order.estimatedDeliveryTime && !isDelivered && !isCancelled && (
+        {/* ETA Display */}
+        {etaData && !isDelivered && !isCancelled && (
+          <View style={styles.etaContainer}>
+            <View style={styles.etaMain}>
+              <Ionicons name="time-outline" size={24} color="#16a34a" />
+              <View style={styles.etaTextContainer}>
+                <Text style={styles.etaLabel}>Tempo estimado</Text>
+                <Text style={styles.etaValue}>
+                  {etaData.displayRemaining || 'Calculando...'}
+                </Text>
+              </View>
+            </View>
+            {etaData.breakdown && (
+              <View style={styles.etaBreakdown}>
+                {etaData.breakdown.preparationRemaining > 0 && (
+                  <View style={styles.etaBreakdownItem}>
+                    <Ionicons name="restaurant-outline" size={16} color="#6b7280" />
+                    <Text style={styles.etaBreakdownText}>
+                      Preparo: {etaData.breakdown.preparationRemaining} min
+                    </Text>
+                  </View>
+                )}
+                {etaData.breakdown.deliveryRemaining > 0 && (
+                  <View style={styles.etaBreakdownItem}>
+                    <Ionicons name="bicycle-outline" size={16} color="#6b7280" />
+                    <Text style={styles.etaBreakdownText}>
+                      Entrega: {etaData.breakdown.deliveryRemaining} min
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+            {etaData.driverLocation && (
+              <View style={styles.driverDistance}>
+                <Ionicons name="navigate-outline" size={16} color="#3b82f6" />
+                <Text style={styles.driverDistanceText}>
+                  Entregador a {etaData.driverLocation.distanceToDestinationKm.toFixed(1)} km
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Legacy ETA fallback */}
+        {!etaData && order.estimatedDeliveryTime && !isDelivered && !isCancelled && (
           <View style={styles.estimatedTime}>
             <Ionicons name="time-outline" size={20} color="#16a34a" />
             <Text style={styles.estimatedTimeText}>
@@ -571,6 +624,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#16a34a',
+  },
+  etaContainer: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  etaMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  etaTextContainer: {
+    flex: 1,
+  },
+  etaLabel: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  etaValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#16a34a',
+  },
+  etaBreakdown: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#dcfce7',
+    gap: 8,
+  },
+  etaBreakdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  etaBreakdownText: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  driverDistance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#dcfce7',
+  },
+  driverDistanceText: {
+    fontSize: 13,
+    color: '#3b82f6',
+    fontWeight: '500',
   },
   driverInfo: {
     flexDirection: 'row',
