@@ -6,6 +6,7 @@ import { RealtimeModule } from '@modules/realtime/realtime.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { CouponsModule } from '@modules/coupons/coupons.module';
 import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.module';
+import { PlatformFeeModule } from '@modules/platform-fees/platform-fee.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.m
     forwardRef(() => PaymentsModule),
     forwardRef(() => CouponsModule),
     forwardRef(() => DriverMatchingModule),
+    PlatformFeeModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

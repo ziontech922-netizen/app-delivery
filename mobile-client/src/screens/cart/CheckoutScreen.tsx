@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { orderService, addressService } from '../../services/orderService';
 import { etaService } from '../../services/etaService';
+import { platformFeeService, FeePreview } from '../../services/platformFeeService';
 import { useCartStore } from '../../stores/cartStore';
 import { CartStackParamList } from '../../navigation/types';
 import { Address, Coupon } from '../../types';
@@ -76,6 +77,14 @@ export default function CheckoutScreen() {
         selectedAddress!.longitude!,
       ),
     enabled: !!restaurantId && !!selectedAddress?.latitude && !!selectedAddress?.longitude,
+  });
+
+  // Fetch platform fee preview
+  const { data: feePreview } = useQuery({
+    queryKey: ['feePreview', restaurantId, subtotal, deliveryFee, discount],
+    queryFn: () =>
+      platformFeeService.previewFees(restaurantId!, subtotal, deliveryFee, discount),
+    enabled: !!restaurantId && subtotal > 0,
   });
 
   // Set default address
@@ -394,11 +403,22 @@ export default function CheckoutScreen() {
             </Text>
           </View>
 
+          {feePreview && feePreview.serviceFee > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Taxa de serviço</Text>
+              <Text style={styles.summaryValue}>
+                R$ {feePreview.serviceFee.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.divider} />
 
           <View style={styles.summaryRow}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>R$ {finalTotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>
+              R$ {feePreview ? feePreview.total.toFixed(2) : finalTotal.toFixed(2)}
+            </Text>
           </View>
         </View>
 
@@ -420,7 +440,9 @@ export default function CheckoutScreen() {
           ) : (
             <>
               <Text style={styles.orderButtonText}>Fazer pedido</Text>
-              <Text style={styles.orderButtonTotal}>R$ {finalTotal.toFixed(2)}</Text>
+              <Text style={styles.orderButtonTotal}>
+                R$ {feePreview ? feePreview.total.toFixed(2) : finalTotal.toFixed(2)}
+              </Text>
             </>
           )}
         </TouchableOpacity>

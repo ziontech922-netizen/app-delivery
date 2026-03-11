@@ -19,6 +19,7 @@ import { SearchModule } from '@modules/search/search.module';
 import { CouponsModule } from '@modules/coupons/coupons.module';
 import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.module';
 import { EtaModule } from '@modules/eta/eta.module';
+import { PlatformFeeModule } from '@modules/platform-fees/platform-fee.module';
 
 @Module({
   imports: [
@@ -78,6 +79,9 @@ import { EtaModule } from '@modules/eta/eta.module';
 
     // ETA - Sistema de tempo estimado de entrega
     EtaModule,
+
+    // Platform Fees - Sistema de taxas da plataforma
+    PlatformFeeModule,
   ],
   controllers: [],
   providers: [],

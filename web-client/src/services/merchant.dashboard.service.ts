@@ -70,6 +70,8 @@ export interface MerchantOrder {
   totalAmount: number;
   deliveryFee: number;
   subtotal: number;
+  platformFee: number;      // Taxa de serviço paga pelo cliente
+  merchantNet: number;      // Valor líquido do merchant
   createdAt: string;
   acceptedAt: string | null;
   preparedAt: string | null;

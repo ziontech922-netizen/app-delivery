@@ -74,6 +74,8 @@ export default function MerchantOrdersPage() {
           totalAmount: 89.9,
           deliveryFee: 8.0,
           subtotal: 81.9,
+          platformFee: 2.0,
+          merchantNet: 73.71,
           createdAt: new Date().toISOString(),
           acceptedAt: null,
           preparedAt: null,
@@ -123,6 +125,8 @@ export default function MerchantOrdersPage() {
           totalAmount: 125.0,
           deliveryFee: 10.0,
           subtotal: 115.0,
+          platformFee: 2.0,
+          merchantNet: 103.5,
           createdAt: new Date(Date.now() - 900000).toISOString(),
           acceptedAt: new Date(Date.now() - 600000).toISOString(),
           preparedAt: null,
@@ -168,6 +172,8 @@ export default function MerchantOrdersPage() {
           totalAmount: 67.5,
           deliveryFee: 7.0,
           subtotal: 60.5,
+          platformFee: 2.0,
+          merchantNet: 54.45,
           createdAt: new Date(Date.now() - 1800000).toISOString(),
           acceptedAt: new Date(Date.now() - 1500000).toISOString(),
           preparedAt: new Date(Date.now() - 300000).toISOString(),
@@ -399,9 +405,16 @@ export default function MerchantOrdersPage() {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <p className="font-bold text-lg text-gray-900">
-                    {formatCurrency(order.totalAmount)}
-                  </p>
+                  <div>
+                    <p className="font-bold text-lg text-gray-900">
+                      {formatCurrency(order.totalAmount)}
+                    </p>
+                    {order.merchantNet > 0 && (
+                      <p className="text-xs text-green-600">
+                        Você recebe: {formatCurrency(order.merchantNet)}
+                      </p>
+                    )}
+                  </div>
 
                   {/* Quick actions */}
                   {order.status === 'PENDING' && (
@@ -567,6 +580,18 @@ export default function MerchantOrdersPage() {
                   <span>Total</span>
                   <span>{formatCurrency(selectedOrder.totalAmount)}</span>
                 </div>
+                {selectedOrder.platformFee > 0 && (
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>Taxa da plataforma</span>
+                      <span>-{formatCurrency(selectedOrder.platformFee)}</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-green-600">
+                      <span>Você recebe</span>
+                      <span>{formatCurrency(selectedOrder.merchantNet)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}

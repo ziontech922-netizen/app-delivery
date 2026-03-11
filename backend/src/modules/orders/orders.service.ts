@@ -15,6 +15,7 @@ import { NotificationsService } from '@modules/notifications/notifications.servi
 import { NotificationEvent } from '@modules/notifications/dto/notification.dto';
 import { CouponsService } from '@modules/coupons/coupons.service';
 import { DriverMatchingService } from '@modules/driver-matching/driver-matching.service';
+import { PlatformFeeService } from '@modules/platform-fees/platform-fee.service';
 import { CreateOrderDto, UpdateOrderStatusDto, CreateAddressDto } from './dto';
 
 @Injectable()
@@ -32,6 +33,7 @@ export class OrdersService {
     private readonly coupons: CouponsService,
     @Inject(forwardRef(() => DriverMatchingService))
     private readonly driverMatching: DriverMatchingService,
+    private readonly platformFees: PlatformFeeService,
   ) {}
 
   // =============================================
@@ -186,7 +188,21 @@ export class OrdersService {
       this.logger.log(`Cupom ${couponCode} aplicado: desconto de R$ ${discount}`);
     }
 
-    const total = subtotal + deliveryFee - discount;
+    // Calcular taxas da plataforma
+    const feeResult = await this.platformFees.calculateFees(dto.merchantId, subtotal);
+    const platformFee = feeResult.platformFee; // Comissão do merchant
+    const serviceFee = feeResult.serviceFee;   // Taxa de serviço do cliente
+    const merchantNet = feeResult.merchantNet;
+
+    if (feeResult.appliedFee) {
+      this.logger.log(
+        `Taxa aplicada: ${feeResult.appliedFee.name} - comissão R$ ${platformFee}, serviço R$ ${serviceFee} (merchant net: R$ ${merchantNet})`,
+      );
+    }
+
+    // Total = subtotal + deliveryFee + serviceFee - discount
+    // platformFee (comissão) é deduzido do merchantNet, não adicionado ao cliente
+    const total = subtotal + deliveryFee + serviceFee - discount;
 
     // Gerar número do pedido
     const orderNumber = await this.generateOrderNumber();
@@ -204,6 +220,8 @@ export class OrdersService {
         subtotal,
         deliveryFee,
         discount,
+        platformFee: serviceFee, // Taxa de serviço paga pelo cliente
+        merchantNet,             // Valor líquido após comissão
         total,
         paymentMethod: dto.paymentMethod,
         paymentStatus: PaymentStatus.PENDING,
