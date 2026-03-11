@@ -14,6 +14,7 @@ import { PaymentsService } from '@modules/payments/payments.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 import { NotificationEvent } from '@modules/notifications/dto/notification.dto';
 import { CouponsService } from '@modules/coupons/coupons.service';
+import { DriverMatchingService } from '@modules/driver-matching/driver-matching.service';
 import { CreateOrderDto, UpdateOrderStatusDto, CreateAddressDto } from './dto';
 
 @Injectable()
@@ -29,6 +30,8 @@ export class OrdersService {
     private readonly notifications: NotificationsService,
     @Inject(forwardRef(() => CouponsService))
     private readonly coupons: CouponsService,
+    @Inject(forwardRef(() => DriverMatchingService))
+    private readonly driverMatching: DriverMatchingService,
   ) {}
 
   // =============================================
@@ -463,6 +466,13 @@ export class OrdersService {
 
     this.logger.log(`Pedido ${orderId} atualizado para ${dto.status}`);
 
+    // Iniciar matching de driver quando pedido estiver pronto
+    if (dto.status === OrderStatus.READY_FOR_PICKUP && !order.driverId) {
+      this.startDriverMatching(orderId).catch((err) => {
+        this.logger.error(`Erro ao iniciar matching para pedido ${orderId}: ${err.message}`);
+      });
+    }
+
     // Emitir evento em tempo real (após commit no banco)
     if (dto.status === OrderStatus.CANCELLED) {
       await this.realtime.emitOrderCancelled(
@@ -560,5 +570,31 @@ export class OrdersService {
   private sanitizeOrder(order: any) {
     // Remove IDs internos sensíveis se necessário
     return order;
+  }
+
+  /**
+   * Inicia busca de driver para o pedido
+   */
+  private async startDriverMatching(orderId: string): Promise<void> {
+    try {
+      const result = await this.driverMatching.startMatchingForOrder({
+        orderId,
+        radiusKm: 5, // Raio padrão de 5km
+      });
+
+      if (result.success) {
+        this.logger.log(
+          `Matching iniciado para pedido ${orderId}, oferta criada: ${result.offerId}`,
+        );
+      } else {
+        this.logger.warn(
+          `Matching não iniciado para pedido ${orderId}: ${result.error}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Falha ao iniciar matching para pedido ${orderId}: ${error}`,
+      );
+    }
   }
 }

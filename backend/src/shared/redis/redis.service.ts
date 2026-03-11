@@ -309,4 +309,60 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async invalidateMerchantActiveOrders(merchantId: string): Promise<boolean> {
     return this.del(`merchant:${merchantId}:active_orders`);
   }
+
+  // =============================================
+  // LIST OPERATIONS
+  // =============================================
+
+  /**
+   * Adiciona elemento no início da lista
+   */
+  async lpush(key: string, value: string): Promise<boolean> {
+    if (!this.isConnected || !this.client) {
+      return false;
+    }
+
+    try {
+      await this.client.lpush(key, value);
+      return true;
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.warn(`Redis LPUSH falhou: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Obtém elementos da lista
+   */
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    if (!this.isConnected || !this.client) {
+      return [];
+    }
+
+    try {
+      return await this.client.lrange(key, start, stop);
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.warn(`Redis LRANGE falhou: ${err.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Remove elementos de uma lista
+   */
+  async lrem(key: string, count: number, value: string): Promise<number> {
+    if (!this.isConnected || !this.client) {
+      return 0;
+    }
+
+    try {
+      return await this.client.lrem(key, count, value);
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.warn(`Redis LREM falhou: ${err.message}`);
+      return 0;
+    }
+  }
 }

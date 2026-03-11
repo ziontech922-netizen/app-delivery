@@ -5,6 +5,7 @@ import { PrismaModule } from '@shared/prisma';
 import { RealtimeModule } from '@modules/realtime/realtime.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { CouponsModule } from '@modules/coupons/coupons.module';
+import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { CouponsModule } from '@modules/coupons/coupons.module';
     forwardRef(() => RealtimeModule),
     forwardRef(() => PaymentsModule),
     forwardRef(() => CouponsModule),
+    forwardRef(() => DriverMatchingModule),
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

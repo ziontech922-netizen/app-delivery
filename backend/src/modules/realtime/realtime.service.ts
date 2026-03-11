@@ -250,6 +250,123 @@ export class RealtimeService {
   }
 
   // =============================================
+  // DRIVER MATCHING EVENTS
+  // =============================================
+
+  /**
+   * Emite oferta de entrega para um driver
+   */
+  async emitDeliveryOffer(
+    driverUserId: string,
+    offer: {
+      id: string;
+      orderId: string;
+      orderNumber: string;
+      merchantName: string;
+      pickupAddress: string;
+      deliveryAddress: string;
+      distanceKm: number;
+      estimatedEarnings: number;
+      expiresAt: Date;
+    },
+  ): Promise<void> {
+    if (!this.server) {
+      this.logger.warn('Server não inicializado, oferta não emitida');
+      return;
+    }
+
+    const payload = {
+      ...offer,
+      type: 'DELIVERY_OFFER',
+      expiresAt: offer.expiresAt.toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+
+    // Emitir diretamente para o driver
+    this.server.to(`driver:${driverUserId}`).emit('delivery:offer', payload);
+    this.server.to(`user:${driverUserId}`).emit('delivery:offer', payload);
+
+    this.logger.log(`Oferta de entrega ${offer.id} emitida para driver ${driverUserId}`);
+  }
+
+  /**
+   * Emite expiração de oferta para um driver
+   */
+  async emitOfferExpired(
+    driverUserId: string,
+    offerId: string,
+  ): Promise<void> {
+    if (!this.server) return;
+
+    const payload = {
+      offerId,
+      type: 'OFFER_EXPIRED',
+      expiredAt: new Date().toISOString(),
+    };
+
+    this.server.to(`driver:${driverUserId}`).emit('delivery:offer_expired', payload);
+    this.server.to(`user:${driverUserId}`).emit('delivery:offer_expired', payload);
+
+    this.logger.log(`Oferta ${offerId} expirada para driver ${driverUserId}`);
+  }
+
+  /**
+   * Emite confirmação de aceite de entrega
+   */
+  async emitOfferAccepted(
+    driverUserId: string,
+    orderId: string,
+    orderDetails: {
+      orderNumber: string;
+      merchantName: string;
+      pickupAddress: string;
+      deliveryAddress: string;
+    },
+  ): Promise<void> {
+    if (!this.server) return;
+
+    const payload = {
+      orderId,
+      ...orderDetails,
+      type: 'OFFER_ACCEPTED',
+      acceptedAt: new Date().toISOString(),
+    };
+
+    this.server.to(`driver:${driverUserId}`).emit('delivery:offer_accepted', payload);
+    this.server.to(`user:${driverUserId}`).emit('delivery:offer_accepted', payload);
+
+    this.logger.log(`Oferta aceita - driver ${driverUserId} -> pedido ${orderId}`);
+  }
+
+  /**
+   * Notifica merchant que driver aceitou o pedido
+   */
+  async emitDriverAssigned(
+    merchantId: string,
+    orderId: string,
+    orderNumber: string,
+    driverInfo: {
+      name: string;
+      phone?: string;
+      vehicleType: string;
+    },
+  ): Promise<void> {
+    if (!this.server) return;
+
+    const payload = {
+      orderId,
+      orderNumber,
+      driver: driverInfo,
+      type: 'DRIVER_ASSIGNED',
+      assignedAt: new Date().toISOString(),
+    };
+
+    this.server.to(`merchant:${merchantId}`).emit('order:driver_assigned', payload);
+
+    this.logger.log(`Driver atribuído ao pedido ${orderNumber} - merchant ${merchantId}`);
+  }
+
+  // =============================================
   // UTILITIES
   // =============================================
 

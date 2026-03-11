@@ -17,6 +17,7 @@ import { ReviewsModule } from '@modules/reviews/reviews.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { SearchModule } from '@modules/search/search.module';
 import { CouponsModule } from '@modules/coupons/coupons.module';
+import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.module';
 
 @Module({
   imports: [
@@ -70,6 +71,9 @@ import { CouponsModule } from '@modules/coupons/coupons.module';
 
     // Coupons - Sistema de cupons
     CouponsModule,
+
+    // Driver Matching - Sistema de atribuição de entregadores
+    DriverMatchingModule,
   ],
   controllers: [],
   providers: [],
