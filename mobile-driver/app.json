@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Delivery Driver",
+    "slug": "delivery-driver",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "deliverydriver",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#16a34a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.delivery.driver",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "O app precisa acessar sua localização para navegação durante as entregas.",
+        "NSLocationAlwaysUsageDescription": "O app precisa acessar sua localização em segundo plano para rastrear entregas.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "O app precisa acessar sua localização para navegação durante as entregas."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.delivery.driver",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "O app precisa acessar sua localização para navegação durante as entregas.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#16a34a"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "delivery-driver-app"
+      }
+    }
+  }
+}
