@@ -119,7 +119,7 @@ export class MerchantDashboardService {
             status: { in: [OrderStatus.DELIVERED, OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP] },
           },
         },
-        _sum: { quantity: true, total: true },
+        _sum: { quantity: true, totalPrice: true },
         orderBy: { _sum: { quantity: 'desc' } },
         take: 5,
       }),
@@ -813,8 +813,8 @@ export class MerchantDashboardService {
             status: OrderStatus.DELIVERED,
           },
         },
-        _sum: { quantity: true, total: true },
-        orderBy: { _sum: { total: 'desc' } },
+        _sum: { quantity: true, totalPrice: true },
+        orderBy: { _sum: { totalPrice: 'desc' } },
         take: 5,
       }),
     ]);
@@ -885,8 +885,8 @@ export class MerchantDashboardService {
       topProducts: topProducts.map((p) => ({
         productId: p.productId,
         productName: productMap.get(p.productId) || 'Produto',
-        quantity: p._sum.quantity || 0,
-        revenue: Number(p._sum.total) || 0,
+        quantity: p._sum?.quantity || 0,
+        revenue: Number(p._sum?.totalPrice) || 0,
       })),
       ordersByHour: [
         { hour: 11, count: 25 },
