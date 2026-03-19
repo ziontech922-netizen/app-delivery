@@ -1,7 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 import Cookies from 'js-cookie';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'https://superapp-api-beta.fly.dev';
+// Socket URL deve ser a raiz do servidor, não a API
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://superapp-api-beta.fly.dev/api/v1';
+const SOCKET_URL = API_URL.replace('/api/v1', '').replace('/api', '');
 
 // Tipos de eventos
 export interface OrderStatusChangedEvent {

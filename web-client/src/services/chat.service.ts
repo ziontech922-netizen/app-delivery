@@ -85,7 +85,9 @@ class ChatService {
       return;
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://superapp-api-beta.fly.dev';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://superapp-api-beta.fly.dev/api/v1';
+    // Socket.io precisa da raiz do servidor, não da rota da API
+    const baseUrl = apiUrl.replace('/api/v1', '').replace('/api', '');
     
     this.socket = io(baseUrl, {
       auth: { token },
