@@ -73,6 +73,10 @@ enum AdminAction {
   MERCHANT_SUSPENDED
   MERCHANT_ACTIVATED
   MERCHANT_REJECTED
+  DRIVER_APPROVED
+  DRIVER_SUSPENDED
+  DRIVER_ACTIVATED
+  DRIVER_REJECTED
   ORDER_CANCELLED
   ORDER_REFUNDED
   USER_SUSPENDED
@@ -119,6 +123,27 @@ model User {
   emailVerifiedAt   DateTime?  @map("email_verified_at")
   lastLoginAt       DateTime?  @map("last_login_at")
   
+  // Super App - Perfil público
+  userHandle        String?    @unique @map("user_handle") // @usuario único
+  avatarUrl         String?    @map("avatar_url")
+  bio               String?
+  
+  // Push Notifications
+  pushToken         String?    @map("push_token") // FCM/Expo token
+  pushTokenUpdatedAt DateTime? @map("push_token_updated_at")
+  
+  // Social Login IDs
+  googleId          String?    @unique @map("google_id")
+  appleId           String?    @unique @map("apple_id")
+  facebookId        String?    @unique @map("facebook_id")
+  profilePicture    String?    @map("profile_picture")
+  
+  // Localização padrão (para feed e listings)
+  defaultCity       String?    @map("default_city")
+  defaultState      String?    @map("default_state")
+  defaultLatitude   Decimal?   @db.Decimal(10, 8) @map("default_latitude")
+  defaultLongitude  Decimal?   @db.Decimal(11, 8) @map("default_longitude")
+  
   // LGPD: Registro de consentimento
   acceptedTermsAt   DateTime?  @map("accepted_terms_at")
   acceptedPrivacyAt DateTime?  @map("accepted_privacy_at")
@@ -127,19 +152,29 @@ model User {
   updatedAt         DateTime   @updatedAt @map("updated_at")
   deletedAt         DateTime?  @map("deleted_at")
   
-  // Relacionamentos
+  // Relacionamentos existentes
   merchant          Merchant?
   driverProfile     DriverProfile?
   customerOrders    Order[]    @relation("CustomerOrders")
   driverOrders      Order[]    @relation("DriverOrders")
   addresses         Address[]
   refreshTokens     RefreshToken[]
+  passwordResets    PasswordReset?
   adminAuditLogs    AdminAuditLog[]
   reviews           Review[]
+  
+  // Super App - Novos relacionamentos
+  listings          Listing[]
+  listingFavorites  ListingFavorite[]
+  conversationsAsP1 Conversation[] @relation("ConversationParticipant1")
+  conversationsAsP2 Conversation[] @relation("ConversationParticipant2")
+  messages          Message[]
   
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([userHandle])
+  @@index([defaultCity, defaultState])
   @@map("users")
 }
 
@@ -156,6 +191,50 @@ model RefreshToken {
   @@index([userId])
   @@index([token])
   @@map("refresh_tokens")
+}
+
+// OTP Code for phone verification
+model OtpCode {
+  id          String   @id @default(cuid())
+  phone       String   @unique
+  code        String   // hashed
+  expiresAt   DateTime @map("expires_at")
+  attempts    Int      @default(0)
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([phone])
+  @@map("otp_codes")
+}
+
+// Phone verification token (after OTP is verified)
+model PhoneVerification {
+  id          String   @id @default(cuid())
+  phone       String   @unique
+  token       String
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([phone])
+  @@index([token])
+  @@map("phone_verifications")
+}
+
+// Password reset token
+model PasswordReset {
+  id          String    @id @default(cuid())
+  userId      String    @unique @map("user_id")
+  token       String    // hashed
+  expiresAt   DateTime  @map("expires_at")
+  usedAt      DateTime? @map("used_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@map("password_resets")
 }
 
 model Address {
@@ -662,4 +741,272 @@ model PlatformFee {
   @@index([isActive])
   @@index([priority])
   @@map("platform_fees")
+}
+
+// ===========================================
+// SUPER APP - LISTINGS (Marketplace)
+// ===========================================
+
+enum ListingCategory {
+  PRODUCTS
+  SERVICES
+  VEHICLES
+  REAL_ESTATE
+  JOBS
+  FOOD
+  ELECTRONICS
+  FASHION
+  HOME_GARDEN
+  SPORTS
+  PETS
+  OTHER
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  EXPIRED
+  REMOVED
+}
+
+model Listing {
+  id            String          @id @default(cuid())
+  userId        String          @map("user_id")
+  
+  // Conteúdo
+  title         String
+  description   String?
+  price         Decimal?        @db.Decimal(10, 2)
+  priceType     String          @default("FIXED") @map("price_type") // FIXED, NEGOTIABLE, FREE, CONTACT
+  images        String[]        // Array de URLs
+  audioUrl      String?         @map("audio_url") // URL do áudio da postagem
+  
+  // Categorização
+  category      ListingCategory
+  subcategory   String?
+  tags          String[]
+  
+  // Localização
+  city          String?
+  state         String?
+  neighborhood  String?
+  latitude      Decimal?        @db.Decimal(10, 8)
+  longitude     Decimal?        @db.Decimal(11, 8)
+  
+  // Status e configurações
+  status        ListingStatus   @default(ACTIVE)
+  viewCount     Int             @default(0) @map("view_count")
+  favoriteCount Int             @default(0) @map("favorite_count")
+  isFeatured    Boolean         @default(false) @map("is_featured")
+  
+  // Criado via IA
+  aiGenerated   Boolean         @default(false) @map("ai_generated")
+  aiMetadata    Json?           @map("ai_metadata") // Dados extraídos pela IA
+  
+  // Timestamps
+  expiresAt     DateTime?       @map("expires_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  deletedAt     DateTime?       @map("deleted_at")
+  
+  // Relacionamentos
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites     ListingFavorite[]
+  
+  @@index([userId])
+  @@index([category])
+  @@index([status])
+  @@index([city, state])
+  @@index([createdAt])
+  @@index([isFeatured])
+  @@map("listings")
+}
+
+model ListingFavorite {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  listingId   String   @map("listing_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("listing_favorites")
+}
+
+// ===========================================
+// SUPER APP - CHAT (Mensageiro)
+// ===========================================
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  SYSTEM
+}
+
+model Conversation {
+  id              String    @id @default(cuid())
+  // Participantes
+  participant1Id  String    @map("participant1_id")
+  participant2Id  String    @map("participant2_id")
+  
+  // Contexto opcional (ex: sobre um anúncio)
+  listingId       String?   @map("listing_id")
+  
+  // Última mensagem (cache para listar conversas)
+  lastMessageAt   DateTime? @map("last_message_at")
+  lastMessageText String?   @map("last_message_text")
+  
+  // Status por participante
+  participant1UnreadCount Int @default(0) @map("participant1_unread_count")
+  participant2UnreadCount Int @default(0) @map("participant2_unread_count")
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relacionamentos
+  participant1    User      @relation("ConversationParticipant1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2    User      @relation("ConversationParticipant2", fields: [participant2Id], references: [id], onDelete: Cascade)
+  messages        Message[]
+  
+  @@unique([participant1Id, participant2Id, listingId])
+  @@index([participant1Id])
+  @@index([participant2Id])
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id              String      @id @default(cuid())
+  conversationId  String      @map("conversation_id")
+  senderId        String      @map("sender_id")
+  
+  // Conteúdo
+  type            MessageType @default(TEXT)
+  content         String      // Texto ou URL da mídia
+  metadata        Json?       // Metadados adicionais (ex: duração do áudio)
+  
+  // Status
+  readAt          DateTime?   @map("read_at")
+  
+  // Timestamps
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
+  
+  // Relacionamentos
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+// ===========================================
+// SUPER APP - SPONSORS (Patrocinadores)
+// ===========================================
+
+enum SponsorPlacement {
+  HOME_BANNER
+  CATEGORY_HEADER
+  FEED_INLINE
+  SEARCH_RESULTS
+  LISTING_DETAIL
+  FEATURED_CAROUSEL
+}
+
+model Sponsor {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  logoUrl     String?           @map("logo_url")
+  bannerUrl   String?           @map("banner_url")
+  websiteUrl  String?           @map("website_url")
+  
+  // Configurações de exibição
+  placements  SponsorPlacement[]
+  priority    Int               @default(0) // Maior = mais destaque
+  
+  // Segmentação
+  targetCities     String[]     @map("target_cities")
+  targetCategories ListingCategory[] @map("target_categories")
+  
+  // Período ativo
+  startDate   DateTime          @map("start_date")
+  endDate     DateTime          @map("end_date")
+  
+  // Status
+  isActive    Boolean           @default(true) @map("is_active")
+  
+  // Métricas
+  impressions Int               @default(0)
+  clicks      Int               @default(0)
+  
+  // Timestamps
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  
+  @@index([isActive])
+  @@index([startDate, endDate])
+  @@index([priority])
+  @@map("sponsors")
+}
+
+// ===========================================
+// SUPER APP - COMMUNITY FEED
+// ===========================================
+
+enum FeedItemType {
+  NEW_LISTING
+  PROMOTION
+  NEW_MERCHANT
+  SPONSORED
+  ANNOUNCEMENT
+  EVENT
+}
+
+model CommunityFeedItem {
+  id          String        @id @default(cuid())
+  type        FeedItemType
+  
+  // Conteúdo
+  title       String
+  description String?
+  imageUrl    String?       @map("image_url")
+  linkUrl     String?       @map("link_url")
+  
+  // Referência a entidade (opcional)
+  listingId   String?       @map("listing_id")
+  merchantId  String?       @map("merchant_id")
+  sponsorId   String?       @map("sponsor_id")
+  
+  // Localização do feed item
+  city        String?
+  state       String?
+  
+  // Configurações
+  priority    Int           @default(0)
+  isActive    Boolean       @default(true) @map("is_active")
+  
+  // Período ativo (opcional)
+  startDate   DateTime?     @map("start_date")
+  endDate     DateTime?     @map("end_date")
+  
+  // Timestamps
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  
+  @@index([type])
+  @@index([city, state])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("community_feed_items")
 }

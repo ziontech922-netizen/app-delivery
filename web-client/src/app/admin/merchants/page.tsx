@@ -14,6 +14,7 @@ import {
   Eye,
   Ban,
   CheckCircle,
+  Trash2,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { adminService, AdminMerchant } from '@/services/admin.service';
@@ -31,7 +32,7 @@ export default function AdminMerchantsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedMerchant, setSelectedMerchant] = useState<AdminMerchant | null>(null);
-  const [actionModal, setActionModal] = useState<'approve' | 'suspend' | 'activate' | null>(null);
+  const [actionModal, setActionModal] = useState<'approve' | 'suspend' | 'activate' | 'delete' | null>(null);
   const [suspendReason, setSuspendReason] = useState('');
 
   // Fetch merchants
@@ -119,15 +120,24 @@ export default function AdminMerchantsPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminService.deleteMerchant(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'merchants'] });
+      setActionModal(null);
+      setSelectedMerchant(null);
+    },
+  });
+
   const merchants = data?.data || [];
   const filteredMerchants = merchants.filter(
     (m) =>
-      m.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.tradeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.user.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (m.businessName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.tradeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.user?.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAction = (merchant: AdminMerchant, action: 'approve' | 'suspend' | 'activate') => {
+  const handleAction = (merchant: AdminMerchant, action: 'approve' | 'suspend' | 'activate' | 'delete') => {
     setSelectedMerchant(merchant);
     setActionModal(action);
   };
@@ -141,6 +151,8 @@ export default function AdminMerchantsPage() {
       suspendMutation.mutate({ id: selectedMerchant.id, reason: suspendReason });
     } else if (actionModal === 'activate') {
       activateMutation.mutate(selectedMerchant.id);
+    } else if (actionModal === 'delete') {
+      deleteMutation.mutate(selectedMerchant.id);
     }
   };
 
@@ -264,7 +276,7 @@ export default function AdminMerchantsPage() {
                         <div className="flex items-center gap-1">
                           <Star className="h-4 w-4 text-yellow-400 fill-current" />
                           <span className="text-sm font-medium">
-                            {merchant.averageRating.toFixed(1)}
+                            {Number(merchant.averageRating).toFixed(1)}
                           </span>
                           <span className="text-xs text-gray-400">
                             ({merchant.totalReviews})
@@ -315,6 +327,13 @@ export default function AdminMerchantsPage() {
                             <CheckCircle className="h-5 w-5" />
                           </button>
                         )}
+                        <button
+                          onClick={() => handleAction(merchant, 'delete')}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -333,6 +352,7 @@ export default function AdminMerchantsPage() {
               {actionModal === 'approve' && 'Aprovar Merchant'}
               {actionModal === 'suspend' && 'Suspender Merchant'}
               {actionModal === 'activate' && 'Ativar Merchant'}
+              {actionModal === 'delete' && 'Excluir Merchant'}
             </h3>
 
             <p className="text-gray-500 mb-4">
@@ -342,6 +362,8 @@ export default function AdminMerchantsPage() {
                 `Tem certeza que deseja suspender "${selectedMerchant.tradeName || selectedMerchant.businessName}"?`}
               {actionModal === 'activate' &&
                 `Tem certeza que deseja ativar "${selectedMerchant.tradeName || selectedMerchant.businessName}"?`}
+              {actionModal === 'delete' &&
+                `Tem certeza que deseja excluir "${selectedMerchant.tradeName || selectedMerchant.businessName}"? Esta ação não pode ser desfeita.`}
             </p>
 
             {actionModal === 'suspend' && (
@@ -373,16 +395,17 @@ export default function AdminMerchantsPage() {
                 Cancelar
               </Button>
               <Button
-                className="flex-1"
+                className={`flex-1 ${actionModal === 'delete' ? 'bg-red-600 hover:bg-red-700' : ''}`}
                 onClick={confirmAction}
                 isLoading={
                   approveMutation.isPending ||
                   suspendMutation.isPending ||
-                  activateMutation.isPending
+                  activateMutation.isPending ||
+                  deleteMutation.isPending
                 }
                 disabled={actionModal === 'suspend' && !suspendReason.trim()}
               >
-                Confirmar
+                {actionModal === 'delete' ? 'Excluir' : 'Confirmar'}
               </Button>
             </div>
           </div>

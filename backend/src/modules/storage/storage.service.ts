@@ -8,7 +8,18 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 
-export type UploadType = 'product-image' | 'merchant-logo' | 'merchant-banner' | 'driver-avatar' | 'user-avatar';
+export type UploadType = 
+  | 'product-image' 
+  | 'merchant-logo' 
+  | 'merchant-banner' 
+  | 'driver-avatar' 
+  | 'user-avatar'
+  | 'listing-image'      // Marketplace
+  | 'chat-attachment'    // Chat images/files
+  | 'chat-audio'         // Chat voice messages
+  | 'ai-audio'           // AI listing audio input
+  | 'feed-image'         // Community feed posts
+  | 'delivery-photo';    // Delivery confirmation photos
 
 interface PresignResult {
   uploadUrl: string;
@@ -24,16 +35,33 @@ export class StorageService {
   private readonly publicUrl: string;
   private readonly enabled: boolean;
 
-  // Allowed MIME types
-  private readonly allowedMimeTypes = [
+  // Allowed MIME types for images
+  private readonly allowedImageTypes = [
     'image/jpeg',
     'image/png',
     'image/webp',
     'image/gif',
   ];
 
-  // Max file size: 5MB
-  private readonly maxFileSize = 5 * 1024 * 1024;
+  // Allowed MIME types for audio
+  private readonly allowedAudioTypes = [
+    'audio/mpeg',        // MP3
+    'audio/mp4',         // M4A
+    'audio/wav',         // WAV
+    'audio/webm',        // WebM audio
+    'audio/ogg',         // OGG
+    'audio/aac',         // AAC
+  ];
+
+  // Combined allowed types
+  private readonly allowedMimeTypes = [
+    ...this.allowedImageTypes,
+    ...this.allowedAudioTypes,
+  ];
+
+  // Max file sizes
+  private readonly maxImageSize = 5 * 1024 * 1024;   // 5MB for images
+  private readonly maxAudioSize = 25 * 1024 * 1024;  // 25MB for audio (Whisper limit)
 
   // Folder mapping by type
   private readonly folders: Record<UploadType, string> = {
@@ -42,7 +70,16 @@ export class StorageService {
     'merchant-banner': 'merchants/banners',
     'driver-avatar': 'drivers',
     'user-avatar': 'users',
+    'listing-image': 'listings',
+    'chat-attachment': 'chat/attachments',
+    'chat-audio': 'chat/audio',
+    'ai-audio': 'ai/audio',
+    'feed-image': 'feed',
+    'delivery-photo': 'deliveries',
   };
+
+  // Types that accept audio
+  private readonly audioTypes: UploadType[] = ['chat-audio', 'ai-audio'];
 
   constructor(private readonly configService: ConfigService) {
     const accessKeyId = this.configService.get<string>('S3_ACCESS_KEY_ID');
@@ -84,17 +121,29 @@ export class StorageService {
       throw new BadRequestException('Storage service is not configured');
     }
 
-    // Validate content type
-    if (!this.allowedMimeTypes.includes(contentType)) {
-      throw new BadRequestException(
-        `File type not allowed. Allowed types: ${this.allowedMimeTypes.join(', ')}`,
-      );
+    // Check if this is an audio upload type
+    const isAudioUpload = this.audioTypes.includes(type);
+    
+    // Validate content type based on upload type
+    if (isAudioUpload) {
+      if (!this.allowedAudioTypes.includes(contentType)) {
+        throw new BadRequestException(
+          `Audio type not allowed. Allowed types: ${this.allowedAudioTypes.join(', ')}`,
+        );
+      }
+    } else {
+      if (!this.allowedImageTypes.includes(contentType)) {
+        throw new BadRequestException(
+          `Image type not allowed. Allowed types: ${this.allowedImageTypes.join(', ')}`,
+        );
+      }
     }
 
-    // Validate file size
-    if (contentLength > this.maxFileSize) {
+    // Validate file size based on type
+    const maxSize = isAudioUpload ? this.maxAudioSize : this.maxImageSize;
+    if (contentLength > maxSize) {
       throw new BadRequestException(
-        `File too large. Maximum size: ${this.maxFileSize / 1024 / 1024}MB`,
+        `File too large. Maximum size: ${maxSize / 1024 / 1024}MB`,
       );
     }
 
@@ -184,9 +233,15 @@ export class StorageService {
       'image/png': '.png',
       'image/webp': '.webp',
       'image/gif': '.gif',
+      'audio/mpeg': '.mp3',
+      'audio/mp4': '.m4a',
+      'audio/wav': '.wav',
+      'audio/webm': '.webm',
+      'audio/ogg': '.ogg',
+      'audio/aac': '.aac',
     };
 
-    return typeMap[contentType] || '.jpg';
+    return typeMap[contentType] || '.bin';
   }
 
   private buildPublicUrl(key: string): string {

@@ -162,7 +162,7 @@ export default function OrdersScreen() {
             </Text>
             <TouchableOpacity
               style={styles.exploreButton}
-              onPress={() => navigation.navigate('Home')}
+              onPress={() => navigation.goBack()}
             >
               <Text style={styles.exploreButtonText}>Explorar restaurantes</Text>
             </TouchableOpacity>

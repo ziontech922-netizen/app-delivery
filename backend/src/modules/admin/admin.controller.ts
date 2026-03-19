@@ -3,10 +3,10 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
-  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
   Req,
@@ -27,6 +27,10 @@ import {
   AdminOrderQueryDto,
   AdminUserQueryDto,
   AdminAuditQueryDto,
+  AdminDriverQueryDto,
+  ApproveDriverDto,
+  SuspendDriverDto,
+  RejectDriverDto,
 } from './dto';
 
 @Controller('admin')
@@ -65,14 +69,14 @@ export class AdminController {
   }
 
   @Get('merchants/:id')
-  async getMerchant(@Param('id', ParseUUIDPipe) id: string) {
+  async getMerchant(@Param('id') id: string) {
     return this.adminService.getMerchantDetails(id);
   }
 
   @Post('merchants/:id/approve')
   @HttpCode(HttpStatus.OK)
   async approveMerchant(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: ApproveMerchantDto,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,
@@ -83,7 +87,7 @@ export class AdminController {
   @Post('merchants/:id/suspend')
   @HttpCode(HttpStatus.OK)
   async suspendMerchant(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: SuspendMerchantDto,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,
@@ -94,7 +98,7 @@ export class AdminController {
   @Post('merchants/:id/activate')
   @HttpCode(HttpStatus.OK)
   async activateMerchant(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,
   ) {
@@ -104,12 +108,79 @@ export class AdminController {
   @Post('merchants/:id/reject')
   @HttpCode(HttpStatus.OK)
   async rejectMerchant(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: RejectMerchantDto,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,
   ) {
     return this.adminService.rejectMerchant(id, dto, this.getAuditContext(adminId, req));
+  }
+
+  @Delete('merchants/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteMerchant(
+    @Param('id') id: string,
+    @CurrentUser('id') adminId: string,
+    @Req() req: Request,
+  ) {
+    return this.adminService.deleteMerchant(id, this.getAuditContext(adminId, req));
+  }
+
+  // =============================================
+  // DRIVERS
+  // =============================================
+
+  @Get('drivers')
+  async listDrivers(@Query() query: AdminDriverQueryDto) {
+    return this.adminService.listDrivers(query);
+  }
+
+  @Get('drivers/:id')
+  async getDriver(@Param('id') id: string) {
+    return this.adminService.getDriverDetails(id);
+  }
+
+  @Post('drivers/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  async approveDriver(
+    @Param('id') id: string,
+    @Body() dto: ApproveDriverDto,
+    @CurrentUser('id') adminId: string,
+    @Req() req: Request,
+  ) {
+    return this.adminService.approveDriver(id, dto, this.getAuditContext(adminId, req));
+  }
+
+  @Post('drivers/:id/suspend')
+  @HttpCode(HttpStatus.OK)
+  async suspendDriver(
+    @Param('id') id: string,
+    @Body() dto: SuspendDriverDto,
+    @CurrentUser('id') adminId: string,
+    @Req() req: Request,
+  ) {
+    return this.adminService.suspendDriver(id, dto, this.getAuditContext(adminId, req));
+  }
+
+  @Post('drivers/:id/activate')
+  @HttpCode(HttpStatus.OK)
+  async activateDriver(
+    @Param('id') id: string,
+    @CurrentUser('id') adminId: string,
+    @Req() req: Request,
+  ) {
+    return this.adminService.activateDriver(id, this.getAuditContext(adminId, req));
+  }
+
+  @Post('drivers/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  async rejectDriver(
+    @Param('id') id: string,
+    @Body() dto: RejectDriverDto,
+    @CurrentUser('id') adminId: string,
+    @Req() req: Request,
+  ) {
+    return this.adminService.rejectDriver(id, dto, this.getAuditContext(adminId, req));
   }
 
   // =============================================
@@ -122,14 +193,14 @@ export class AdminController {
   }
 
   @Get('orders/:id')
-  async getOrder(@Param('id', ParseUUIDPipe) id: string) {
+  async getOrder(@Param('id') id: string) {
     return this.adminService.getOrderDetails(id);
   }
 
   @Post('orders/:id/cancel')
   @HttpCode(HttpStatus.OK)
   async cancelOrder(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: AdminCancelOrderDto,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,
@@ -147,13 +218,13 @@ export class AdminController {
   }
 
   @Get('users/:id')
-  async getUser(@Param('id', ParseUUIDPipe) id: string) {
+  async getUser(@Param('id') id: string) {
     return this.adminService.getUserDetails(id);
   }
 
   @Patch('users/:id/status')
   async updateUserStatus(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: UpdateUserStatusDto,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,
@@ -163,7 +234,7 @@ export class AdminController {
 
   @Patch('users/:id/role')
   async updateUserRole(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: UpdateUserRoleDto,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,
@@ -183,7 +254,7 @@ export class AdminController {
   @Post('payments/:id/refund')
   @HttpCode(HttpStatus.OK)
   async refundPayment(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: AdminRefundPaymentDto,
     @CurrentUser('id') adminId: string,
     @Req() req: Request,

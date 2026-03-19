@@ -5,18 +5,18 @@ import { api } from './api';
 // ===========================================
 
 export interface DashboardStats {
-  totalOrders: number;
   totalMerchants: number;
-  totalUsers: number;
-  totalRevenue: number;
-  ordersToday: number;
-  ordersThisWeek: number;
-  ordersThisMonth: number;
-  revenueToday: number;
-  revenueThisWeek: number;
-  revenueThisMonth: number;
   pendingMerchants: number;
-  activeDrivers: number;
+  activeMerchants: number;
+  totalOrders: number;
+  pendingOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  totalUsers: number;
+  activeUsers: number;
+  totalRevenue: number;
+  todayRevenue: number;
+  generatedAt: string;
 }
 
 export interface ChartData {
@@ -139,6 +139,28 @@ export interface AdminCoupon {
   };
 }
 
+export interface AdminDriver {
+  id: string;
+  cpf: string;
+  vehicleType: 'MOTORCYCLE' | 'BICYCLE' | 'CAR';
+  vehiclePlate: string | null;
+  vehicleModel: string | null;
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'ONLINE' | 'OFFLINE' | 'ON_DELIVERY' | 'SUSPENDED';
+  isAvailable: boolean;
+  totalDeliveries: number;
+  averageRating: number | null;
+  totalRatings: number;
+  createdAt: string;
+  approvedAt: string | null;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+  };
+}
+
 // ===========================================
 // ADMIN SERVICE
 // ===========================================
@@ -146,7 +168,7 @@ export interface AdminCoupon {
 export const adminService = {
   // Dashboard
   async getStats(): Promise<DashboardStats> {
-    const response = await api.get<DashboardStats>('/admin/stats');
+    const response = await api.get<DashboardStats>('/admin/dashboard');
     return response.data;
   },
 
@@ -175,18 +197,22 @@ export const adminService = {
   },
 
   async approveMerchant(id: string): Promise<AdminMerchant> {
-    const response = await api.patch<AdminMerchant>(`/admin/merchants/${id}/approve`);
+    const response = await api.post<AdminMerchant>(`/admin/merchants/${id}/approve`, {});
     return response.data;
   },
 
   async suspendMerchant(id: string, reason: string): Promise<AdminMerchant> {
-    const response = await api.patch<AdminMerchant>(`/admin/merchants/${id}/suspend`, { reason });
+    const response = await api.post<AdminMerchant>(`/admin/merchants/${id}/suspend`, { reason });
     return response.data;
   },
 
   async activateMerchant(id: string): Promise<AdminMerchant> {
-    const response = await api.patch<AdminMerchant>(`/admin/merchants/${id}/activate`);
+    const response = await api.post<AdminMerchant>(`/admin/merchants/${id}/activate`, {});
     return response.data;
+  },
+
+  async deleteMerchant(id: string): Promise<void> {
+    await api.delete(`/admin/merchants/${id}`);
   },
 
   // Users
@@ -201,12 +227,17 @@ export const adminService = {
   },
 
   async suspendUser(id: string, reason: string): Promise<AdminUser> {
-    const response = await api.patch<AdminUser>(`/admin/users/${id}/suspend`, { reason });
+    const response = await api.patch<AdminUser>(`/admin/users/${id}/status`, { 
+      status: 'SUSPENDED',
+      reason 
+    });
     return response.data;
   },
 
   async activateUser(id: string): Promise<AdminUser> {
-    const response = await api.patch<AdminUser>(`/admin/users/${id}/activate`);
+    const response = await api.patch<AdminUser>(`/admin/users/${id}/status`, { 
+      status: 'ACTIVE' 
+    });
     return response.data;
   },
 
@@ -226,7 +257,7 @@ export const adminService = {
   },
 
   async cancelOrder(id: string, reason: string): Promise<AdminOrder> {
-    const response = await api.patch<AdminOrder>(`/admin/orders/${id}/cancel`, { reason });
+    const response = await api.post<AdminOrder>(`/admin/orders/${id}/cancel`, { reason });
     return response.data;
   },
 
@@ -271,5 +302,41 @@ export const adminService = {
 
   async deleteCoupon(id: string): Promise<void> {
     await api.delete(`/coupons/${id}`);
+  },
+
+  // Drivers
+  async getDrivers(params?: {
+    status?: string;
+    vehicleType?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: AdminDriver[]; total: number }> {
+    const response = await api.get('/admin/drivers', { params });
+    return response.data;
+  },
+
+  async getDriverById(id: string): Promise<AdminDriver> {
+    const response = await api.get<AdminDriver>(`/admin/drivers/${id}`);
+    return response.data;
+  },
+
+  async approveDriver(id: string, notes?: string): Promise<AdminDriver> {
+    const response = await api.post<AdminDriver>(`/admin/drivers/${id}/approve`, { notes });
+    return response.data;
+  },
+
+  async suspendDriver(id: string, reason: string): Promise<AdminDriver> {
+    const response = await api.post<AdminDriver>(`/admin/drivers/${id}/suspend`, { reason });
+    return response.data;
+  },
+
+  async activateDriver(id: string): Promise<AdminDriver> {
+    const response = await api.post<AdminDriver>(`/admin/drivers/${id}/activate`, {});
+    return response.data;
+  },
+
+  async rejectDriver(id: string, reason: string): Promise<AdminDriver> {
+    const response = await api.post<AdminDriver>(`/admin/drivers/${id}/reject`, { reason });
+    return response.data;
   },
 };

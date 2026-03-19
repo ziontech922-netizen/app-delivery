@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { MapPin, CreditCard, Banknote, Plus, Check, ArrowLeft, Tag, X } from 'lucide-react';
+import { MapPin, CreditCard, Banknote, Plus, Check, ArrowLeft, Tag, X, QrCode, Loader2, Copy, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useCartStore, useAuthStore, useUIStore } from '@/store';
+import { useCartStore, useAuthStore } from '@/store';
 import { orderService, addressService } from '@/services/order.service';
+import { paymentService, PaymentIntent } from '@/services/payment.service';
 import { couponService, ApplyCouponResponse } from '@/services/coupon.service';
 import { formatCurrency } from '@/utils/format';
 import { Button, Card, Input } from '@/components/ui';
@@ -32,6 +33,13 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<ApplyCouponResponse | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+
+  // Payment state
+  const [paymentStep, setPaymentStep] = useState<'checkout' | 'processing' | 'pix' | 'success' | 'error'>('checkout');
+  const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   const { data: addresses = [] } = useQuery({
     queryKey: ['addresses'],
@@ -59,11 +67,69 @@ export default function CheckoutPage() {
 
   const createOrderMutation = useMutation({
     mutationFn: orderService.create,
-    onSuccess: (order) => {
-      clearCart();
-      router.push(`/orders/${order.id}`);
+    onSuccess: async (order) => {
+      setOrderId(order.id);
+
+      // CASH: pagamento já é confirmado automaticamente no backend
+      if (selectedPayment === 'CASH') {
+        clearCart();
+        router.push(`/orders/${order.id}`);
+        return;
+      }
+
+      // Criar PaymentIntent no backend
+      setPaymentStep('processing');
+      try {
+        const intent = await paymentService.createIntent({
+          orderId: order.id,
+          method: selectedPayment,
+        });
+        setPaymentIntent(intent);
+
+        if (selectedPayment === 'PIX') {
+          setPaymentStep('pix');
+          clearCart();
+        } else {
+          // Cartão: redirecionar para tela de pedido (card flow via SDK futuro)
+          clearCart();
+          router.push(`/orders/${order.id}`);
+        }
+      } catch {
+        setPaymentError('Erro ao criar pagamento. Você pode tentar novamente na página do pedido.');
+        setPaymentStep('error');
+        clearCart();
+      }
+    },
+    onError: () => {
+      setPaymentError('Erro ao criar pedido. Tente novamente.');
     },
   });
+
+  // Poll PIX payment status
+  useEffect(() => {
+    if (paymentStep !== 'pix' || !paymentIntent?.id) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const updated = await paymentService.getIntent(paymentIntent.id);
+        if (updated.status === 'SUCCEEDED') {
+          setPaymentStep('success');
+          clearInterval(interval);
+          setTimeout(() => {
+            if (orderId) router.push(`/orders/${orderId}`);
+          }, 2000);
+        } else if (updated.status === 'FAILED' || updated.status === 'CANCELLED') {
+          setPaymentError(updated.failureMessage || 'Pagamento falhou');
+          setPaymentStep('error');
+          clearInterval(interval);
+        }
+      } catch {
+        // Silently retry
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [paymentStep, paymentIntent?.id, orderId, router]);
 
   const subtotal = getTotal();
   const deliveryFee = merchant?.deliveryFee || 0;
@@ -85,6 +151,17 @@ export default function CheckoutPage() {
     setCouponCode('');
     setCouponError(null);
   };
+
+  const handleCopyPix = useCallback(async () => {
+    if (!paymentIntent?.pixQrCode) return;
+    try {
+      await navigator.clipboard.writeText(paymentIntent.pixQrCode);
+      setPixCopied(true);
+      setTimeout(() => setPixCopied(false), 3000);
+    } catch {
+      // Fallback: select text
+    }
+  }, [paymentIntent?.pixQrCode]);
 
   const handleSubmit = () => {
     if (!selectedAddress) {
@@ -134,6 +211,140 @@ export default function CheckoutPage() {
         <Link href="/login" className="text-primary-600 hover:underline">
           Entrar na conta
         </Link>
+      </div>
+    );
+  }
+
+  // =============================================
+  // PIX PAYMENT SCREEN
+  // =============================================
+
+  if (paymentStep === 'processing') {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary-600 mx-auto mb-4" />
+        <h1 className="text-xl font-bold text-gray-900 mb-2">Processando pagamento...</h1>
+        <p className="text-gray-500">Aguarde enquanto preparamos seu pagamento</p>
+      </div>
+    );
+  }
+
+  if (paymentStep === 'pix' && paymentIntent) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-lg">
+        <div className="text-center mb-6">
+          <QrCode className="h-12 w-12 text-primary-600 mx-auto mb-3" />
+          <h1 className="text-2xl font-bold text-gray-900">Pague com PIX</h1>
+          <p className="text-gray-500 mt-1">Escaneie o QR Code ou copie o código</p>
+        </div>
+
+        <Card variant="bordered" className="text-center p-6">
+          {/* QR Code */}
+          {paymentIntent.pixQrCodeBase64 && (
+            <div className="mb-6">
+              <img
+                src={paymentIntent.pixQrCodeBase64.startsWith('data:') 
+                  ? paymentIntent.pixQrCodeBase64 
+                  : `data:image/png;base64,${paymentIntent.pixQrCodeBase64}`}
+                alt="QR Code PIX"
+                className="mx-auto w-64 h-64 border rounded-lg"
+              />
+            </div>
+          )}
+
+          {/* PIX Copia e Cola */}
+          {paymentIntent.pixQrCode && (
+            <div className="mb-6">
+              <p className="text-sm text-gray-500 mb-2">PIX Copia e Cola</p>
+              <div className="bg-gray-50 rounded-lg p-3 break-all text-xs text-gray-700 font-mono max-h-24 overflow-y-auto">
+                {paymentIntent.pixQrCode}
+              </div>
+              <Button
+                onClick={handleCopyPix}
+                variant="outline"
+                className="mt-3"
+                size="sm"
+              >
+                {pixCopied ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                    Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar código PIX
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Amount */}
+          <div className="border-t pt-4">
+            <p className="text-sm text-gray-500">Valor a pagar</p>
+            <p className="text-2xl font-bold text-primary-600">
+              {formatCurrency(paymentIntent.amount)}
+            </p>
+          </div>
+
+          {/* Status indicator */}
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Aguardando pagamento...
+          </div>
+
+          {paymentIntent.pixTicketUrl && (
+            <a
+              href={paymentIntent.pixTicketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-block text-sm text-primary-600 hover:underline"
+            >
+              Abrir no app do banco
+            </a>
+          )}
+        </Card>
+
+        <div className="mt-6 text-center">
+          <Link
+            href={orderId ? `/orders/${orderId}` : '/orders'}
+            className="text-sm text-gray-500 hover:underline"
+          >
+            Ver meu pedido
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentStep === 'success') {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center">
+        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Pagamento confirmado!</h1>
+        <p className="text-gray-500 mb-6">Seu pedido está sendo preparado</p>
+        <Button onClick={() => router.push(orderId ? `/orders/${orderId}` : '/orders')}>
+          Acompanhar pedido
+        </Button>
+      </div>
+    );
+  }
+
+  if (paymentStep === 'error') {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center">
+        <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Erro no pagamento</h1>
+        <p className="text-gray-500 mb-6">{paymentError}</p>
+        <div className="flex gap-4 justify-center">
+          <Button onClick={() => router.push(orderId ? `/orders/${orderId}` : '/orders')} variant="outline">
+            Ver pedido
+          </Button>
+          <Button onClick={() => setPaymentStep('checkout')}>
+            Tentar novamente
+          </Button>
+        </div>
       </div>
     );
   }

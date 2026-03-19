@@ -29,7 +29,9 @@ import {
   ApproveDriverDto,
   SuspendDriverDto,
   RejectDriverDto,
+  RegisterDriverDto,
 } from './dto';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class DriversService {
@@ -38,6 +40,93 @@ export class DriversService {
     private readonly redis: RedisService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  // ===========================================
+  // PUBLIC REGISTRATION
+  // ===========================================
+
+  async registerDriver(dto: RegisterDriverDto) {
+    // Verificar se email já existe
+    const existingEmail = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingEmail) {
+      throw new ConflictException('E-mail já cadastrado');
+    }
+
+    // Verificar se CPF já existe
+    const existingCpf = await this.prisma.driverProfile.findUnique({
+      where: { cpf: dto.cpf },
+    });
+
+    if (existingCpf) {
+      throw new ConflictException('CPF já cadastrado');
+    }
+
+    // Hash da senha com Argon2
+    const passwordHash = await argon2.hash(dto.password, {
+      type: argon2.argon2id,
+      memoryCost: 2 ** 16,
+      timeCost: 3,
+      parallelism: 1,
+    });
+
+    // Separar nome em firstName e lastName
+    const nameParts = dto.name.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ') || firstName;
+
+    // Criar usuário e perfil de driver em uma transação
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Criar usuário
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          passwordHash,
+          firstName,
+          lastName,
+          phone: dto.phone,
+          role: UserRole.DRIVER,
+        },
+      });
+
+      // Criar perfil de driver
+      const driverProfile = await tx.driverProfile.create({
+        data: {
+          userId: user.id,
+          cpf: dto.cpf,
+          vehicleType: dto.vehicleType,
+          vehiclePlate: dto.vehiclePlate,
+          status: DriverStatus.PENDING_APPROVAL,
+          isAvailable: false,
+        },
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          role: user.role,
+        },
+        driverProfile: {
+          id: driverProfile.id,
+          cpf: driverProfile.cpf,
+          vehicleType: driverProfile.vehicleType,
+          vehiclePlate: driverProfile.vehiclePlate,
+          status: driverProfile.status,
+        },
+      };
+    });
+
+    return {
+      message: 'Cadastro realizado com sucesso! Aguarde a aprovação.',
+      ...result,
+    };
+  }
 
   // ===========================================
   // PROFILE MANAGEMENT
@@ -116,6 +205,7 @@ export class DriversService {
             firstName: true,
             lastName: true,
             phone: true,
+            avatarUrl: true,
           },
         },
       },
@@ -125,7 +215,30 @@ export class DriversService {
       throw new NotFoundException('Perfil de motorista não encontrado');
     }
 
-    return profile;
+    // Map backend status to frontend expected values
+    const statusMap: Record<string, string> = {
+      'ONLINE': 'AVAILABLE',
+      'ON_DELIVERY': 'BUSY',
+      'OFFLINE': 'OFFLINE',
+      'APPROVED': 'OFFLINE',
+      'PENDING_APPROVAL': 'OFFLINE',
+      'SUSPENDED': 'OFFLINE',
+    };
+
+    // Flatten user data for frontend compatibility
+    const { user, ...driverData } = profile;
+    return {
+      ...driverData,
+      userId: user.id,
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      avatarUrl: user.avatarUrl || driverData.photoUrl,
+      isVerified: profile.status === 'APPROVED' || profile.status === 'ONLINE' || profile.status === 'OFFLINE',
+      status: statusMap[profile.status] || 'OFFLINE',
+    };
   }
 
   async updateProfile(userId: string, dto: UpdateDriverProfileDto) {
@@ -165,12 +278,36 @@ export class DriversService {
             firstName: true,
             lastName: true,
             phone: true,
+            avatarUrl: true,
           },
         },
       },
     });
 
-    return updated;
+    // Map backend status to frontend expected values
+    const statusMap: Record<string, string> = {
+      'ONLINE': 'AVAILABLE',
+      'ON_DELIVERY': 'BUSY',
+      'OFFLINE': 'OFFLINE',
+      'APPROVED': 'OFFLINE',
+      'PENDING_APPROVAL': 'OFFLINE',
+      'SUSPENDED': 'OFFLINE',
+    };
+
+    // Flatten user data for frontend compatibility
+    const { user, ...driverData } = updated;
+    return {
+      ...driverData,
+      userId: user.id,
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      avatarUrl: user.avatarUrl || driverData.photoUrl,
+      isVerified: updated.status === 'APPROVED' || updated.status === 'ONLINE' || updated.status === 'OFFLINE',
+      status: statusMap[updated.status] || 'OFFLINE',
+    };
   }
 
   // ===========================================
@@ -250,12 +387,22 @@ export class DriversService {
       );
     }
 
-    const newStatus = dto.isAvailable
+    // Convert status string to isAvailable boolean if provided
+    let isAvailable: boolean;
+    if (dto.status !== undefined) {
+      isAvailable = dto.status === 'AVAILABLE';
+    } else if (dto.isAvailable !== undefined) {
+      isAvailable = dto.isAvailable;
+    } else {
+      throw new BadRequestException('Forneça status ou isAvailable');
+    }
+
+    const newStatus = isAvailable
       ? DriverStatus.ONLINE
       : DriverStatus.OFFLINE;
 
     const updateData: Prisma.DriverProfileUpdateInput = {
-      isAvailable: dto.isAvailable,
+      isAvailable: isAvailable,
       status: newStatus,
     };
 
@@ -272,7 +419,7 @@ export class DriversService {
     });
 
     // Atualizar cache Redis
-    if (dto.isAvailable) {
+    if (isAvailable) {
       await this.redis.set(
         `driver:available:${profile.id}`,
         JSON.stringify({
@@ -286,7 +433,20 @@ export class DriversService {
       await this.redis.del(`driver:available:${profile.id}`);
     }
 
-    return updated;
+    // Map backend status to frontend expected values
+    const statusMap: Record<string, string> = {
+      'ONLINE': 'AVAILABLE',
+      'ON_DELIVERY': 'BUSY',
+      'OFFLINE': 'OFFLINE',
+      'APPROVED': 'OFFLINE',
+      'PENDING_APPROVAL': 'OFFLINE',
+      'SUSPENDED': 'OFFLINE',
+    };
+
+    return {
+      ...updated,
+      status: statusMap[updated.status] || 'OFFLINE',
+    };
   }
 
   // ===========================================
@@ -599,6 +759,321 @@ export class DriversService {
       balance: Number(profile.balance),
       pendingOrders,
     };
+  }
+
+  async getEarningsSummary(userId: string) {
+    const profile = await this.prisma.driverProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Perfil de motorista não encontrado');
+    }
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [todayOrders, weekOrders, monthOrders] = await Promise.all([
+      this.prisma.order.findMany({
+        where: {
+          driverId: userId,
+          status: OrderStatus.DELIVERED,
+          deliveredAt: { gte: todayStart },
+        },
+        select: { deliveryFee: true },
+      }),
+      this.prisma.order.findMany({
+        where: {
+          driverId: userId,
+          status: OrderStatus.DELIVERED,
+          deliveredAt: { gte: weekStart },
+        },
+        select: { deliveryFee: true },
+      }),
+      this.prisma.order.findMany({
+        where: {
+          driverId: userId,
+          status: OrderStatus.DELIVERED,
+          deliveredAt: { gte: monthStart },
+        },
+        select: { deliveryFee: true },
+      }),
+    ]);
+
+    const today = todayOrders.reduce((sum, o) => sum + Number(o.deliveryFee || 0), 0);
+    const thisWeek = weekOrders.reduce((sum, o) => sum + Number(o.deliveryFee || 0), 0);
+    const thisMonth = monthOrders.reduce((sum, o) => sum + Number(o.deliveryFee || 0), 0);
+    const totalEarnings = Number(profile.balance);
+    const totalDeliveries = profile.totalDeliveries;
+    const averagePerDelivery = totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0;
+
+    return {
+      today,
+      thisWeek,
+      thisMonth,
+      totalEarnings,
+      totalDeliveries,
+      averagePerDelivery,
+    };
+  }
+
+  async getDailyEarnings(userId: string, startDate?: string, endDate?: string) {
+    const profile = await this.prisma.driverProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Perfil de motorista não encontrado');
+    }
+
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(end);
+    if (!startDate) {
+      start.setDate(start.getDate() - 30); // Últimos 30 dias por padrão
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        driverId: userId,
+        status: OrderStatus.DELIVERED,
+        deliveredAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      select: {
+        deliveryFee: true,
+        deliveredAt: true,
+      },
+      orderBy: { deliveredAt: 'asc' },
+    });
+
+    // Agrupar por dia
+    const dailyMap = new Map<string, { amount: number; deliveries: number }>();
+    
+    for (const order of orders) {
+      if (order.deliveredAt) {
+        const dateKey = order.deliveredAt.toISOString().split('T')[0];
+        const existing = dailyMap.get(dateKey) || { amount: 0, deliveries: 0 };
+        existing.amount += Number(order.deliveryFee || 0);
+        existing.deliveries += 1;
+        dailyMap.set(dateKey, existing);
+      }
+    }
+
+    return Array.from(dailyMap.entries()).map(([date, data]) => ({
+      date,
+      amount: data.amount,
+      deliveries: data.deliveries,
+    }));
+  }
+
+  // ===========================================
+  // DELIVERY MANAGEMENT
+  // ===========================================
+
+  async getCurrentDelivery(userId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        driverId: userId,
+        status: {
+          in: [OrderStatus.READY_FOR_PICKUP, OrderStatus.OUT_FOR_DELIVERY],
+        },
+      },
+      include: {
+        merchant: {
+          select: {
+            id: true,
+            businessName: true,
+          },
+        },
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        address: {
+          select: {
+            street: true,
+            number: true,
+            complement: true,
+            neighborhood: true,
+            city: true,
+            state: true,
+            latitude: true,
+            longitude: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!order) {
+      return null;
+    }
+
+    // Transformar para o formato esperado pelo frontend
+    return {
+      id: order.id,
+      status: order.status,
+      restaurant: {
+        id: order.merchant?.id,
+        name: order.merchant?.businessName,
+        phone: null,
+        address: {},
+      },
+      customer: {
+        id: order.customer?.id,
+        name: `${order.customer?.firstName} ${order.customer?.lastName}`,
+        phone: order.customer?.phone,
+      },
+      deliveryAddress: order.address || {},
+      items: order.items.map((item) => ({
+        name: item.product?.name || 'Item',
+        quantity: item.quantity,
+        price: Number(item.unitPrice),
+      })),
+      deliveryFee: Number(order.deliveryFee),
+      total: Number(order.total),
+      createdAt: order.createdAt.toISOString(),
+      estimatedDeliveryTime: null,
+    };
+  }
+
+  async getDeliveryHistory(
+    userId: string,
+    startDate?: string,
+    endDate?: string,
+    page = 1,
+    limit = 20,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.OrderWhereInput = {
+      driverId: userId,
+      status: OrderStatus.DELIVERED,
+    };
+
+    if (startDate || endDate) {
+      where.deliveredAt = {};
+      if (startDate) where.deliveredAt.gte = new Date(startDate);
+      if (endDate) where.deliveredAt.lte = new Date(endDate);
+    }
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        include: {
+          merchant: {
+            select: { businessName: true },
+          },
+          customer: {
+            select: { firstName: true, lastName: true },
+          },
+          review: {
+            select: { driverRating: true },
+          },
+        },
+        orderBy: { deliveredAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      data: orders.map((order) => ({
+        id: order.id,
+        orderId: order.id,
+        restaurantName: order.merchant?.businessName || 'Restaurante',
+        customerName: `${order.customer?.firstName} ${order.customer?.lastName}`,
+        deliveryFee: Number(order.deliveryFee),
+        status: order.status,
+        completedAt: order.deliveredAt?.toISOString(),
+        rating: order.review?.driverRating,
+      })),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async updateDeliveryStatus(
+    userId: string,
+    orderId: string,
+    status: 'PICKED_UP' | 'DELIVERED',
+  ) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        driverId: userId,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Pedido não encontrado');
+    }
+
+    const newStatus =
+      status === 'PICKED_UP'
+        ? OrderStatus.OUT_FOR_DELIVERY
+        : OrderStatus.DELIVERED;
+
+    const updatedOrder = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: newStatus,
+        ...(status === 'DELIVERED' && { deliveredAt: new Date() }),
+      },
+    });
+
+    return updatedOrder;
+  }
+
+  async cancelDelivery(userId: string, orderId: string, reason: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        driverId: userId,
+        status: {
+          in: [OrderStatus.READY_FOR_PICKUP, OrderStatus.OUT_FOR_DELIVERY],
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Pedido não encontrado ou não pode ser cancelado');
+    }
+
+    // Remover o motorista e voltar para status READY_FOR_PICKUP
+    const updatedOrder = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.READY_FOR_PICKUP,
+        driverId: null,
+        notes: order.notes
+          ? `${order.notes}\n[Cancelado pelo motorista: ${reason}]`
+          : `[Cancelado pelo motorista: ${reason}]`,
+      },
+    });
+
+    return updatedOrder;
   }
 
   // ===========================================

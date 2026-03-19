@@ -28,9 +28,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Instalar dependências do sistema para Prisma
+RUN apk add --no-cache libc6-compat openssl
+
 # Copiar node_modules do stage anterior
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Regenerar cliente Prisma com schema atualizado
+RUN npx prisma generate
 
 # Build da aplicação
 RUN npm run build
@@ -72,5 +78,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Usar dumb-init para gerenciar processos
 ENTRYPOINT ["dumb-init", "--"]
 
-# Rodar migrations e iniciar aplicação
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+# Iniciar aplicação (migrations são rodadas separadamente)
+CMD ["node", "dist/main"]

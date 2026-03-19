@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import Cookies from 'js-cookie';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'https://delivery-platform-api.fly.dev';
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'https://superapp-api-beta.fly.dev';
 
 // Tipos de eventos
 export interface OrderStatusChangedEvent {
@@ -77,7 +77,9 @@ export const getSocket = (): Socket => {
 // Conectar com autenticação
 export const connectSocket = (): void => {
   const socketInstance = getSocket();
-  const token = Cookies.get('accessToken');
+  // Get token from cookies first, then localStorage as fallback (for mobile browsers)
+  const token = Cookies.get('accessToken') || 
+    (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null);
 
   if (token) {
     socketInstance.auth = { token };

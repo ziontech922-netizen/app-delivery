@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store';
@@ -14,19 +14,26 @@ import {
   LogOut,
   Menu,
   X,
+  Bike,
+  Percent,
   Settings,
-  ChevronDown,
 } from 'lucide-react';
-import { useState } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Merchants', href: '/admin/merchants', icon: Store },
+  { name: 'Entregadores', href: '/admin/drivers', icon: Bike },
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
   { name: 'Usuários', href: '/admin/users', icon: Users },
   { name: 'Pagamentos', href: '/admin/payments', icon: CreditCard },
   { name: 'Cupons', href: '/admin/coupons', icon: Tag },
+  { name: 'Taxas', href: '/admin/platform-fees', icon: Percent },
+  { name: 'Configurações', href: '/admin/settings', icon: Settings },
 ];
+
+// Hydration helper
+const emptySubscribe = () => () => {};
+const useIsClient = () => useSyncExternalStore(emptySubscribe, () => true, () => false);
 
 export default function AdminLayout({
   children,
@@ -37,14 +44,13 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Skip layout for login page
-  if (pathname === '/admin/login') {
-    return <>{children}</>;
-  }
+  const isClient = useIsClient();
 
   // Check if user is admin
   useEffect(() => {
+    if (!isClient) return;
+    if (pathname === '/admin/login') return;
+    
     if (!isAuthenticated) {
       router.push('/admin/login');
       return;
@@ -52,10 +58,15 @@ export default function AdminLayout({
     if (user?.role !== 'ADMIN') {
       router.push('/admin/login');
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isClient, pathname]);
 
-  // Don't render until auth is checked
-  if (!isAuthenticated || user?.role !== 'ADMIN') {
+  // Skip layout for login page
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  // Show loading while hydrating or checking auth
+  if (!isClient || !isAuthenticated || user?.role !== 'ADMIN') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -95,6 +106,7 @@ export default function AdminLayout({
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-gray-400 hover:text-white"
+            aria-label="Fechar menu"
           >
             <X className="h-6 w-6" />
           </button>
@@ -154,6 +166,7 @@ export default function AdminLayout({
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            aria-label="Abrir menu"
           >
             <Menu className="h-6 w-6" />
           </button>

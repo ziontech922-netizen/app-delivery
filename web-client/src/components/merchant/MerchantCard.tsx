@@ -56,7 +56,7 @@ export default function MerchantCard({ merchant }: MerchantCardProps) {
             {merchant.rating !== undefined && merchant.rating > 0 && (
               <div className="flex items-center gap-1">
                 <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                <span className="font-medium">{merchant.rating.toFixed(1)}</span>
+                <span className="font-medium">{Number(merchant.rating).toFixed(1)}</span>
               </div>
             )}
 
@@ -71,9 +71,9 @@ export default function MerchantCard({ merchant }: MerchantCardProps) {
             {/* Delivery Fee */}
             {merchant.deliveryFee !== undefined && (
               <span className="text-gray-500">
-                {merchant.deliveryFee === 0
+                {Number(merchant.deliveryFee) === 0
                   ? 'Entrega grátis'
-                  : `R$ ${merchant.deliveryFee.toFixed(2).replace('.', ',')}`}
+                  : `R$ ${Number(merchant.deliveryFee).toFixed(2).replace('.', ',')}`}
               </span>
             )}
           </div>

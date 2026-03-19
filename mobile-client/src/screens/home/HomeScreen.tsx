@@ -19,10 +19,10 @@ import { useQuery } from '@tanstack/react-query';
 import { restaurantService } from '../../services/restaurantService';
 import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
-import { HomeStackParamList } from '../../navigation/types';
+import { ExploreStackParamList } from '../../navigation/types';
 import { Restaurant, Category } from '../../types';
 
-type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeScreen'>;
+type HomeScreenNavigationProp = NativeStackNavigationProp<ExploreStackParamList, 'ExploreHome'>;
 
 const { width } = Dimensions.get('window');
 

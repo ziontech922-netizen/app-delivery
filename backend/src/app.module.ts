@@ -21,6 +21,13 @@ import { DriverMatchingModule } from '@modules/driver-matching/driver-matching.m
 import { EtaModule } from '@modules/eta/eta.module';
 import { PlatformFeeModule } from '@modules/platform-fees/platform-fee.module';
 
+// Super App - Novos Módulos
+import { ListingsModule } from '@modules/listings/listings.module';
+import { ChatModule } from '@modules/chat/chat.module';
+import { AiListingModule } from '@modules/ai-listing/ai-listing.module';
+import { CommunityFeedModule } from '@modules/community-feed/community-feed.module';
+import { SponsorsModule } from '@modules/sponsors/sponsors.module';
+
 @Module({
   imports: [
     // Configuração global de variáveis de ambiente
@@ -82,6 +89,25 @@ import { PlatformFeeModule } from '@modules/platform-fees/platform-fee.module';
 
     // Platform Fees - Sistema de taxas da plataforma
     PlatformFeeModule,
+
+    // ===========================================
+    // SUPER APP - Novos Módulos
+    // ===========================================
+
+    // Listings - Marketplace de anúncios
+    ListingsModule,
+
+    // Chat - Mensagens entre usuários
+    ChatModule,
+
+    // AI Listing - Criação inteligente de anúncios
+    AiListingModule,
+
+    // Community Feed - Feed da comunidade
+    CommunityFeedModule,
+
+    // Sponsors - Sistema de patrocinadores
+    SponsorsModule,
   ],
   controllers: [],
   providers: [],

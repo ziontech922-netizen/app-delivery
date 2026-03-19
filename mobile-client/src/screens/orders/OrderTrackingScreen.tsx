@@ -449,7 +449,10 @@ export default function OrderTrackingScreen() {
       {isDelivered && (
         <TouchableOpacity
           style={styles.rateButton}
-          onPress={() => navigation.navigate('RateOrder', { orderId })}
+          onPress={() => {
+            // TODO: Implementar tela de avaliação
+            console.log('Avaliar pedido:', orderId);
+          }}
         >
           <Ionicons name="star-outline" size={20} color="#fff" />
           <Text style={styles.rateButtonText}>Avaliar pedido</Text>

@@ -8,7 +8,6 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  XCircle,
   Package,
   ChefHat,
 } from 'lucide-react';
@@ -26,7 +25,8 @@ import {
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { Card } from '@/components/ui';
-import { merchantDashboardService, DashboardStats } from '@/services/merchant.dashboard.service';
+import Link from 'next/link';
+import { merchantDashboardService } from '@/services/merchant.dashboard.service';
 import { formatCurrency } from '@/utils/format';
 
 // Register Chart.js components
@@ -104,7 +104,7 @@ export default function MerchantDashboardPage() {
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
 
   // Fetch dashboard stats
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['merchant', 'dashboard', period],
     queryFn: merchantDashboardService.getDashboardStats,
     placeholderData: {
@@ -138,7 +138,7 @@ export default function MerchantDashboardPage() {
           status: 'PREPARING',
           total: 125.0,
           customerName: 'Maria Santos',
-          createdAt: new Date(Date.now() - 300000).toISOString(),
+          createdAt: '2026-03-11T10:00:00.000Z',
         },
         {
           id: '3',
@@ -146,7 +146,7 @@ export default function MerchantDashboardPage() {
           status: 'READY',
           total: 67.5,
           customerName: 'Carlos Lima',
-          createdAt: new Date(Date.now() - 600000).toISOString(),
+          createdAt: '2026-03-11T09:50:00.000Z',
         },
       ],
     },
@@ -244,10 +244,7 @@ export default function MerchantDashboardPage() {
     }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  };
+
 
   return (
     <div className="space-y-6">
@@ -365,9 +362,9 @@ export default function MerchantDashboardPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Pedidos Recentes</h3>
-            <a href="/merchant/orders" className="text-sm text-primary-600 hover:underline">
+            <Link href="/merchant/orders" className="text-sm text-primary-600 hover:underline">
               Ver todos
-            </a>
+            </Link>
           </div>
           <div className="space-y-3">
             {stats?.recentOrders.map((order) => (
@@ -405,9 +402,9 @@ export default function MerchantDashboardPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Produtos Mais Vendidos</h3>
-            <a href="/merchant/products" className="text-sm text-primary-600 hover:underline">
+            <Link href="/merchant/products" className="text-sm text-primary-600 hover:underline">
               Ver todos
-            </a>
+            </Link>
           </div>
           <div className="space-y-3">
             {stats?.topProducts.map((product, index) => (

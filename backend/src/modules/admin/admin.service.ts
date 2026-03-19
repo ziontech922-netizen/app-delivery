@@ -12,6 +12,7 @@ import {
   AdminAction,
   PaymentStatus,
   PaymentIntentStatus,
+  DriverStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/prisma';
 import { PaymentsService } from '@modules/payments/payments.service';
@@ -27,6 +28,10 @@ import {
   AdminOrderQueryDto,
   AdminUserQueryDto,
   AdminAuditQueryDto,
+  AdminDriverQueryDto,
+  ApproveDriverDto,
+  SuspendDriverDto,
+  RejectDriverDto,
 } from './dto';
 
 interface AuditContext {
@@ -108,7 +113,9 @@ export class AdminService {
     const { page = 1, limit = 20, status, search } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: any = {
+      deletedAt: null, // Excluir soft-deleted merchants
+    };
     if (status) where.status = status;
     if (search) {
       where.OR = [
@@ -280,6 +287,257 @@ export class AdminService {
     });
 
     this.logger.log(`Merchant ${merchantId} rejeitado por admin ${ctx.adminId}: ${dto.reason}`);
+
+    return updated;
+  }
+
+  async deleteMerchant(merchantId: string, ctx: AuditContext) {
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { id: merchantId },
+      include: { user: true },
+    });
+
+    if (!merchant) {
+      throw new NotFoundException('Merchant não encontrado');
+    }
+
+    // Soft delete - marca como deletado
+    await this.prisma.merchant.update({
+      where: { id: merchantId },
+      data: { 
+        deletedAt: new Date(),
+        status: MerchantStatus.INACTIVE,
+        isOpen: false,
+      },
+    });
+
+    // Volta o role do usuário para CUSTOMER apenas se NÃO for ADMIN
+    // Isso evita que admins que também são merchants percam acesso admin
+    if (merchant.user.role !== UserRole.ADMIN) {
+      await this.prisma.user.update({
+        where: { id: merchant.userId },
+        data: { role: UserRole.CUSTOMER },
+      });
+    }
+
+    await this.logAction(ctx, {
+      action: AdminAction.MERCHANT_REJECTED,
+      targetType: 'merchant',
+      targetId: merchantId,
+      previousValue: { status: merchant.status },
+      newValue: { status: 'DELETED' },
+      reason: 'Merchant excluído pelo admin',
+    });
+
+    this.logger.log(`Merchant ${merchantId} excluído por admin ${ctx.adminId}`);
+
+    return { success: true, message: 'Merchant excluído com sucesso' };
+  }
+
+  // =============================================
+  // DRIVER MANAGEMENT
+  // =============================================
+
+  async listDrivers(query: AdminDriverQueryDto) {
+    const { page = 1, limit = 20, status, vehicleType, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (vehicleType) where.vehicleType = vehicleType;
+    if (search) {
+      where.OR = [
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { user: { firstName: { contains: search, mode: 'insensitive' } } },
+        { user: { lastName: { contains: search, mode: 'insensitive' } } },
+        { cpf: { contains: search } },
+        { vehiclePlate: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [drivers, total] = await Promise.all([
+      this.prisma.driverProfile.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.driverProfile.count({ where }),
+    ]);
+
+    return {
+      data: drivers,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getDriverDetails(driverId: string) {
+    const driver = await this.prisma.driverProfile.findUnique({
+      where: { id: driverId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            createdAt: true,
+          },
+        },
+        reviews: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            customer: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Driver não encontrado');
+    }
+
+    return driver;
+  }
+
+  async approveDriver(driverId: string, dto: ApproveDriverDto, ctx: AuditContext) {
+    const driver = await this.prisma.driverProfile.findUnique({
+      where: { id: driverId },
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Driver não encontrado');
+    }
+
+    if (driver.status !== DriverStatus.PENDING_APPROVAL) {
+      throw new BadRequestException('Driver não está pendente de aprovação');
+    }
+
+    const updated = await this.prisma.driverProfile.update({
+      where: { id: driverId },
+      data: {
+        status: DriverStatus.APPROVED,
+        approvedAt: new Date(),
+      },
+    });
+
+    await this.logAction(ctx, {
+      action: AdminAction.DRIVER_APPROVED,
+      targetType: 'driver',
+      targetId: driverId,
+      previousValue: { status: driver.status },
+      newValue: { status: DriverStatus.APPROVED },
+      reason: dto.notes,
+    });
+
+    this.logger.log(`Driver ${driverId} aprovado por admin ${ctx.adminId}`);
+
+    return updated;
+  }
+
+  async suspendDriver(driverId: string, dto: SuspendDriverDto, ctx: AuditContext) {
+    const driver = await this.prisma.driverProfile.findUnique({
+      where: { id: driverId },
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Driver não encontrado');
+    }
+
+    const updated = await this.prisma.driverProfile.update({
+      where: { id: driverId },
+      data: {
+        status: DriverStatus.SUSPENDED,
+        isAvailable: false,
+      },
+    });
+
+    await this.logAction(ctx, {
+      action: AdminAction.DRIVER_SUSPENDED,
+      targetType: 'driver',
+      targetId: driverId,
+      previousValue: { status: driver.status },
+      newValue: { status: DriverStatus.SUSPENDED },
+      reason: dto.reason,
+    });
+
+    this.logger.log(`Driver ${driverId} suspenso por admin ${ctx.adminId}: ${dto.reason}`);
+
+    return updated;
+  }
+
+  async activateDriver(driverId: string, ctx: AuditContext) {
+    const driver = await this.prisma.driverProfile.findUnique({
+      where: { id: driverId },
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Driver não encontrado');
+    }
+
+    if (driver.status === DriverStatus.PENDING_APPROVAL) {
+      throw new BadRequestException('Driver precisa ser aprovado primeiro');
+    }
+
+    const updated = await this.prisma.driverProfile.update({
+      where: { id: driverId },
+      data: { status: DriverStatus.APPROVED },
+    });
+
+    await this.logAction(ctx, {
+      action: AdminAction.DRIVER_ACTIVATED,
+      targetType: 'driver',
+      targetId: driverId,
+      previousValue: { status: driver.status },
+      newValue: { status: DriverStatus.APPROVED },
+    });
+
+    this.logger.log(`Driver ${driverId} reativado por admin ${ctx.adminId}`);
+
+    return updated;
+  }
+
+  async rejectDriver(driverId: string, dto: RejectDriverDto, ctx: AuditContext) {
+    const driver = await this.prisma.driverProfile.findUnique({
+      where: { id: driverId },
+    });
+
+    if (!driver) {
+      throw new NotFoundException('Driver não encontrado');
+    }
+
+    if (driver.status !== DriverStatus.PENDING_APPROVAL) {
+      throw new BadRequestException('Driver não está pendente de aprovação');
+    }
+
+    const updated = await this.prisma.driverProfile.update({
+      where: { id: driverId },
+      data: { status: DriverStatus.SUSPENDED },
+    });
+
+    await this.logAction(ctx, {
+      action: AdminAction.DRIVER_REJECTED,
+      targetType: 'driver',
+      targetId: driverId,
+      previousValue: { status: driver.status },
+      newValue: { status: DriverStatus.SUSPENDED },
+      reason: dto.reason,
+    });
+
+    this.logger.log(`Driver ${driverId} rejeitado por admin ${ctx.adminId}: ${dto.reason}`);
 
     return updated;
   }

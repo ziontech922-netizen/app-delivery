@@ -144,8 +144,8 @@ export default function AdminCouponsPage() {
 
   const coupons = data?.data || [];
   const filteredCoupons = coupons.filter((c) =>
-    c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (c.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const openCreateModal = () => {

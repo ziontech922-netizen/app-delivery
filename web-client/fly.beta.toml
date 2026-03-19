@@ -1,0 +1,25 @@
+# Super App Web - Beta Environment (Fly.io)
+# Deploy: fly deploy --config fly.beta.toml
+
+app = 'superapp-web-beta'
+primary_region = 'gru'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[build.args]
+  NEXT_PUBLIC_API_URL = 'https://superapp-api-beta.fly.dev/api/v1'
+  NEXT_PUBLIC_BETA_MODE = 'true'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1

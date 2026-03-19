@@ -113,10 +113,10 @@ export default function AdminOrdersPage() {
   const orders = data?.data || [];
   const filteredOrders = orders.filter(
     (o) =>
-      o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customer.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.merchant.tradeName.toLowerCase().includes(searchQuery.toLowerCase())
+      (o.orderNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.customer?.firstName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.customer?.lastName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.merchant?.tradeName || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const openDetails = (order: AdminOrder) => {

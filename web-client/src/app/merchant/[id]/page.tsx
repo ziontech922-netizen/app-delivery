@@ -145,9 +145,9 @@ export default function MerchantPage({ params }: MerchantPageProps) {
               <span className="text-gray-600">
                 Taxa de entrega:{' '}
                 <span className="font-medium">
-                  {merchant.deliveryFee === 0
+                  {Number(merchant.deliveryFee) === 0
                     ? 'Grátis'
-                    : `R$ ${merchant.deliveryFee.toFixed(2).replace('.', ',')}`}
+                    : `R$ ${Number(merchant.deliveryFee).toFixed(2).replace('.', ',')}`}
                 </span>
               </span>
             )}
@@ -156,7 +156,7 @@ export default function MerchantPage({ params }: MerchantPageProps) {
               <span className="text-gray-600">
                 Pedido mínimo:{' '}
                 <span className="font-medium">
-                  R$ {merchant.minOrder.toFixed(2).replace('.', ',')}
+                  R$ {Number(merchant.minOrder).toFixed(2).replace('.', ',')}
                 </span>
               </span>
             )}

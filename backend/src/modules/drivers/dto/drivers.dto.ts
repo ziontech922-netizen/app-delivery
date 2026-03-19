@@ -9,6 +9,7 @@ import {
   Max,
   Matches,
   IsInt,
+  IsIn,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { DriverStatus, VehicleType } from '@prisma/client';
@@ -161,8 +162,13 @@ export class UpdateLocationDto {
 // ===========================================
 
 export class SetAvailabilityDto {
+  @IsOptional()
   @IsBoolean()
-  isAvailable!: boolean;
+  isAvailable?: boolean;
+
+  @IsOptional()
+  @IsIn(['AVAILABLE', 'BUSY', 'OFFLINE'])
+  status?: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
 
   @IsOptional()
   @IsNumber()
@@ -360,4 +366,37 @@ export interface NearbyDriverResponseDto {
   averageRating?: number;
   totalDeliveries: number;
   distanceKm: number;
+}
+
+// ===========================================
+// DRIVER REGISTRATION (PUBLIC)
+// ===========================================
+
+export class RegisterDriverDto {
+  @IsString()
+  @Matches(/^[A-Za-zÀ-ÿ\s]+$/, { message: 'Nome deve conter apenas letras' })
+  name!: string;
+
+  @IsString()
+  @Matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: 'E-mail inválido' })
+  email!: string;
+
+  @IsString()
+  @Matches(/^.{6,}$/, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  password!: string;
+
+  @IsString()
+  @Matches(/^\d{10,11}$/, { message: 'Telefone deve ter 10 ou 11 dígitos' })
+  phone!: string;
+
+  @IsString()
+  @Matches(/^\d{11}$/, { message: 'CPF deve ter 11 dígitos' })
+  cpf!: string;
+
+  @IsEnum(VehicleType)
+  vehicleType!: VehicleType;
+
+  @IsOptional()
+  @IsString()
+  vehiclePlate?: string;
 }

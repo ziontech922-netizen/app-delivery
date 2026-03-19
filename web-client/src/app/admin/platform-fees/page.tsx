@@ -174,8 +174,8 @@ export default function AdminPlatformFeesPage() {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         if (
-          !fee.name.toLowerCase().includes(query) &&
-          !fee.description?.toLowerCase().includes(query)
+          !(fee.name || '').toLowerCase().includes(query) &&
+          !(fee.description || '').toLowerCase().includes(query)
         ) {
           return false;
         }
@@ -710,7 +710,7 @@ export default function AdminPlatformFeesPage() {
                 Cancelar
               </Button>
               <Button
-                variant="destructive"
+                variant="danger"
                 className="flex-1"
                 onClick={() => deleteMutation.mutate(deletingFee.id)}
                 isLoading={deleteMutation.isPending}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,17 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import * as Clipboard from 'expo-clipboard';
 import { orderService, addressService } from '../../services/orderService';
+import { paymentService, PaymentIntent } from '../../services/paymentService';
 import { etaService } from '../../services/etaService';
 import { platformFeeService, FeePreview } from '../../services/platformFeeService';
 import { useCartStore } from '../../stores/cartStore';
@@ -60,6 +64,12 @@ export default function CheckoutScreen() {
   const [discount, setDiscount] = useState(0);
   const [changeFor, setChangeFor] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Payment flow state
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [pixPaymentIntent, setPixPaymentIntent] = useState<PaymentIntent | null>(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const pixPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch addresses
   const { data: addresses, isLoading: loadingAddresses } = useQuery({
@@ -131,7 +141,68 @@ export default function CheckoutScreen() {
         notes,
         changeFor: paymentMethod === 'cash' && changeFor ? parseFloat(changeFor) : undefined,
       }),
-    onSuccess: (order) => {
+    onSuccess: async (order) => {
+      const pmUpper = paymentMethod.toUpperCase();
+
+      // CASH: pagamento confirmado no backend automaticamente
+      if (pmUpper === 'CASH') {
+        clearCart();
+        Alert.alert('Pedido realizado!', 'Seu pedido foi enviado com sucesso.', [
+          {
+            text: 'Acompanhar',
+            onPress: () => {
+              navigation.getParent()?.getParent()?.navigate('OrderTracking', { orderId: order.id });
+            },
+          },
+        ]);
+        return;
+      }
+
+      // PIX: criar intent e mostrar QR code
+      if (pmUpper === 'PIX') {
+        setProcessingPayment(true);
+        try {
+          const intent = await paymentService.createIntent({
+            orderId: order.id,
+            method: 'PIX',
+          });
+          setPixPaymentIntent(intent);
+          setShowPixModal(true);
+          clearCart();
+
+          // Iniciar polling do status
+          pixPollRef.current = setInterval(async () => {
+            try {
+              const updated = await paymentService.getIntent(intent.id);
+              if (updated.status === 'SUCCEEDED') {
+                if (pixPollRef.current) clearInterval(pixPollRef.current);
+                setShowPixModal(false);
+                Alert.alert('Pagamento confirmado!', 'Seu pedido está sendo preparado.', [
+                  {
+                    text: 'Acompanhar',
+                    onPress: () => {
+                      navigation.getParent()?.getParent()?.navigate('OrderTracking', { orderId: order.id });
+                    },
+                  },
+                ]);
+              } else if (updated.status === 'FAILED' || updated.status === 'CANCELLED') {
+                if (pixPollRef.current) clearInterval(pixPollRef.current);
+                setShowPixModal(false);
+                Alert.alert('Pagamento falhou', updated.failureMessage || 'Tente novamente.');
+              }
+            } catch {
+              // Retry silenciosamente
+            }
+          }, 3000);
+        } catch {
+          Alert.alert('Erro', 'Não foi possível gerar o pagamento PIX');
+        } finally {
+          setProcessingPayment(false);
+        }
+        return;
+      }
+
+      // Cartão: redirecionar para acompanhamento (MVP - tokenização via SDK futuro)
       clearCart();
       Alert.alert('Pedido realizado!', 'Seu pedido foi enviado com sucesso.', [
         {
@@ -146,6 +217,20 @@ export default function CheckoutScreen() {
       Alert.alert('Erro', error.message || 'Não foi possível criar o pedido');
     },
   });
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pixPollRef.current) clearInterval(pixPollRef.current);
+    };
+  }, []);
+
+  const handleCopyPixCode = async () => {
+    if (pixPaymentIntent?.pixQrCode) {
+      await Clipboard.setStringAsync(pixPaymentIntent.pixQrCode);
+      Alert.alert('Copiado!', 'Código PIX copiado para a área de transferência');
+    }
+  };
 
   const handleApplyCoupon = () => {
     if (couponCode.trim()) {
@@ -433,9 +518,9 @@ export default function CheckoutScreen() {
             createOrderMutation.isPending && styles.orderButtonDisabled,
           ]}
           onPress={handleCreateOrder}
-          disabled={createOrderMutation.isPending}
+          disabled={createOrderMutation.isPending || processingPayment}
         >
-          {createOrderMutation.isPending ? (
+          {createOrderMutation.isPending || processingPayment ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
@@ -447,6 +532,69 @@ export default function CheckoutScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* PIX Payment Modal */}
+      <Modal
+        visible={showPixModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          if (pixPollRef.current) clearInterval(pixPollRef.current);
+          setShowPixModal(false);
+        }}
+      >
+        <SafeAreaView style={pixStyles.container}>
+          <View style={pixStyles.header}>
+            <Text style={pixStyles.title}>Pague com PIX</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (pixPollRef.current) clearInterval(pixPollRef.current);
+                setShowPixModal(false);
+              }}
+            >
+              <Ionicons name="close" size={28} color={COLORS.secondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={pixStyles.content}>
+            {pixPaymentIntent?.pixQrCodeBase64 && (
+              <View style={pixStyles.qrContainer}>
+                <Image
+                  source={{
+                    uri: pixPaymentIntent.pixQrCodeBase64.startsWith('data:')
+                      ? pixPaymentIntent.pixQrCodeBase64
+                      : `data:image/png;base64,${pixPaymentIntent.pixQrCodeBase64}`,
+                  }}
+                  style={pixStyles.qrImage}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+
+            <Text style={pixStyles.amount}>
+              R$ {pixPaymentIntent?.amount.toFixed(2)}
+            </Text>
+
+            {pixPaymentIntent?.pixQrCode && (
+              <View style={pixStyles.codeContainer}>
+                <Text style={pixStyles.codeLabel}>PIX Copia e Cola</Text>
+                <Text style={pixStyles.codeText} numberOfLines={3}>
+                  {pixPaymentIntent.pixQrCode}
+                </Text>
+                <TouchableOpacity style={pixStyles.copyButton} onPress={handleCopyPixCode}>
+                  <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
+                  <Text style={pixStyles.copyText}>Copiar código PIX</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={pixStyles.statusContainer}>
+              <ActivityIndicator color={COLORS.primary} size="small" />
+              <Text style={pixStyles.statusText}>Aguardando pagamento...</Text>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -752,5 +900,94 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+});
+
+const pixStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.secondary,
+  },
+  content: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  qrContainer: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 20,
+  },
+  qrImage: {
+    width: 250,
+    height: 250,
+  },
+  amount: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginBottom: 24,
+  },
+  codeContainer: {
+    width: '100%',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  codeLabel: {
+    fontSize: 13,
+    color: COLORS.gray,
+    marginBottom: 8,
+  },
+  codeText: {
+    fontSize: 12,
+    color: COLORS.secondary,
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'monospace',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  copyText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusText: {
+    fontSize: 15,
+    color: COLORS.gray,
   },
 });

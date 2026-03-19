@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react';
 import SocketProvider from './SocketProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { NotificationListener } from '@/components/NotificationListener';
+import { AuthInitializer } from '@/components/AuthInitializer';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -30,6 +31,7 @@ export default function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <SocketProvider>
+          <AuthInitializer />
           <NotificationListener />
           {children}
         </SocketProvider>

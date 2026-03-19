@@ -8,6 +8,27 @@ const UPLOAD_TYPES = [
   'merchant-banner',
   'driver-avatar',
   'user-avatar',
+  'listing-image',
+  'chat-attachment',
+  'chat-audio',
+  'ai-audio',
+  'feed-image',
+  'delivery-photo',
+] as const;
+
+const ALLOWED_CONTENT_TYPES = [
+  // Images
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  // Audio
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/wav',
+  'audio/webm',
+  'audio/ogg',
+  'audio/aac',
 ] as const;
 
 export class PresignUploadDto {
@@ -35,21 +56,21 @@ export class PresignUploadDto {
     example: 'image/jpeg',
   })
   @IsString()
-  @IsIn(['image/jpeg', 'image/png', 'image/webp', 'image/gif'], {
-    message: 'contentType must be one of: image/jpeg, image/png, image/webp, image/gif',
+  @IsIn([...ALLOWED_CONTENT_TYPES], {
+    message: `contentType must be one of: ${ALLOWED_CONTENT_TYPES.join(', ')}`,
   })
   contentType!: string;
 
   @ApiProperty({
-    description: 'File size in bytes',
+    description: 'File size in bytes (max 5MB for images, 25MB for audio)',
     example: 102400,
     minimum: 1,
-    maximum: 5242880,
+    maximum: 26214400,
   })
   @Type(() => Number)
   @IsNumber()
   @Min(1, { message: 'File size must be at least 1 byte' })
-  @Max(5242880, { message: 'File size must be at most 5MB' })
+  @Max(26214400, { message: 'File size must be at most 25MB' })
   contentLength!: number;
 }
 

@@ -123,10 +123,10 @@ export default function AdminPaymentsPage() {
   const payments = data?.data || [];
   const filteredPayments = payments.filter(
     (p) =>
-      p.transactionId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.customer.lastName.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.transactionId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.orderId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.customer?.firstName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.customer?.lastName || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const openDetails = (payment: AdminPayment) => {

@@ -2,14 +2,17 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Types
 import {
   RootStackParamList,
   AuthStackParamList,
   MainTabParamList,
-  HomeStackParamList,
+  ExploreStackParamList,
+  ListingsStackParamList,
+  ChatStackParamList,
   SearchStackParamList,
   OrdersStackParamList,
   ProfileStackParamList,
@@ -20,9 +23,21 @@ import {
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 
-// Screens - Home
+// Screens - Explore (Super App Hub)
+import ExploreHomeScreen from '../screens/explore/ExploreHomeScreen';
+
+// Screens - Legacy Home (fallback)
 import HomeScreen from '../screens/home/HomeScreen';
 import RestaurantDetailScreen from '../screens/restaurant/RestaurantDetailScreen';
+
+// Screens - Listings/Marketplace
+import ListingsScreen from '../screens/listings/ListingsScreen';
+import ListingDetailScreen from '../screens/listings/ListingDetailScreen';
+import CreateListingScreen from '../screens/listings/CreateListingScreen';
+
+// Screens - Chat
+import ConversationsScreen from '../screens/chat/ConversationsScreen';
+import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
 
 // Screens - Search
 import SearchScreen from '../screens/search/SearchScreen';
@@ -51,13 +66,16 @@ const COLORS = {
   background: '#FFFFFF',
   gray: '#95A5A6',
   lightGray: '#F5F5F5',
+  white: '#FFFFFF',
 };
 
 // Create navigators
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainTab = createBottomTabNavigator<MainTabParamList>();
-const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const ExploreStack = createNativeStackNavigator<ExploreStackParamList>();
+const ListingsStack = createNativeStackNavigator<ListingsStackParamList>();
+const ChatStack = createNativeStackNavigator<ChatStackParamList>();
 const SearchStack = createNativeStackNavigator<SearchStackParamList>();
 const OrdersStack = createNativeStackNavigator<OrdersStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
@@ -77,27 +95,88 @@ function AuthNavigator() {
   );
 }
 
-// Home Stack Navigator
-function HomeNavigator() {
+// Explore Stack Navigator (Super App Hub)
+function ExploreNavigator() {
   return (
-    <HomeStack.Navigator
+    <ExploreStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: COLORS.background },
         headerTintColor: COLORS.secondary,
         headerTitleStyle: { fontWeight: '600' },
       }}
     >
-      <HomeStack.Screen
-        name="HomeScreen"
-        component={HomeScreen}
+      <ExploreStack.Screen
+        name="ExploreHome"
+        component={ExploreHomeScreen}
         options={{ headerShown: false }}
       />
-      <HomeStack.Screen
+      <ExploreStack.Screen
         name="RestaurantDetail"
         component={RestaurantDetailScreen}
         options={{ headerShown: false }}
       />
-    </HomeStack.Navigator>
+      <ExploreStack.Screen
+        name="ListingDetail"
+        component={ListingDetailScreen}
+        options={{ headerShown: false }}
+      />
+    </ExploreStack.Navigator>
+  );
+}
+
+// Listings Stack Navigator (Marketplace)
+function ListingsNavigator() {
+  return (
+    <ListingsStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: COLORS.background },
+        headerTintColor: COLORS.secondary,
+        headerTitleStyle: { fontWeight: '600' },
+      }}
+    >
+      <ListingsStack.Screen
+        name="ListingsHome"
+        component={ListingsScreen}
+        options={{ headerShown: false }}
+      />
+      <ListingsStack.Screen
+        name="ListingDetail"
+        component={ListingDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <ListingsStack.Screen
+        name="CreateListing"
+        component={CreateListingScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+    </ListingsStack.Navigator>
+  );
+}
+
+// Chat Stack Navigator
+function ChatNavigator() {
+  return (
+    <ChatStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: COLORS.background },
+        headerTintColor: COLORS.secondary,
+        headerTitleStyle: { fontWeight: '600' },
+      }}
+    >
+      <ChatStack.Screen
+        name="ConversationsList"
+        component={ConversationsScreen}
+        options={{ headerShown: false }}
+      />
+      <ChatStack.Screen
+        name="ChatRoom"
+        component={ChatRoomScreen}
+        options={{ headerShown: false }}
+      />
+    </ChatStack.Navigator>
   );
 }
 
@@ -215,8 +294,31 @@ function CartBadge() {
   );
 }
 
-// Main Tab Navigator
+// Central Publish Button Component
+function PublishButton({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.publishButtonContainer} onPress={onPress} activeOpacity={0.8}>
+      <LinearGradient
+        colors={['#FF6B35', '#FF8F5C']}
+        style={styles.publishButton}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Ionicons name="add" size={32} color={COLORS.white} />
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+// Dummy screen for Publish tab (handled by button)
+function PublishPlaceholder() {
+  return <View />;
+}
+
+// Main Tab Navigator (Super App)
 function MainNavigator() {
+  const navigation = require('@react-navigation/native').useNavigation();
+
   return (
     <MainTab.Navigator
       screenOptions={({ route }: { route: { name: string } }) => ({
@@ -224,14 +326,16 @@ function MainNavigator() {
           let iconName: string;
 
           switch (route.name) {
-            case 'Home':
-              iconName = focused ? 'home' : 'home-outline';
+            case 'Explore':
+              iconName = focused ? 'compass' : 'compass-outline';
               break;
-            case 'Search':
-              iconName = focused ? 'search' : 'search-outline';
+            case 'Listings':
+              iconName = focused ? 'grid' : 'grid-outline';
               break;
-            case 'Orders':
-              iconName = focused ? 'receipt' : 'receipt-outline';
+            case 'Publish':
+              return null; // Custom button
+            case 'Chat':
+              iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
               break;
             case 'Profile':
               iconName = focused ? 'person' : 'person-outline';
@@ -240,37 +344,58 @@ function MainNavigator() {
               iconName = 'home-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName as any} size={size} color={color} />;
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.gray,
         tabBarStyle: {
           backgroundColor: COLORS.background,
           borderTopColor: COLORS.lightGray,
-          paddingBottom: 5,
-          height: 60,
+          paddingBottom: 8,
+          paddingTop: 5,
+          height: 70,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+          elevation: 10,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: 11,
+          fontWeight: '600',
+          marginBottom: 2,
         },
         headerShown: false,
       })}
     >
       <MainTab.Screen
-        name="Home"
-        component={HomeNavigator}
-        options={{ tabBarLabel: 'Início' }}
+        name="Explore"
+        component={ExploreNavigator}
+        options={{ tabBarLabel: 'Explorar' }}
       />
       <MainTab.Screen
-        name="Search"
-        component={SearchNavigator}
-        options={{ tabBarLabel: 'Buscar' }}
+        name="Listings"
+        component={ListingsNavigator}
+        options={{ tabBarLabel: 'Anúncios' }}
       />
       <MainTab.Screen
-        name="Orders"
-        component={OrdersNavigator}
-        options={{ tabBarLabel: 'Pedidos' }}
+        name="Publish"
+        component={PublishPlaceholder}
+        options={{
+          tabBarLabel: '',
+          tabBarButton: () => (
+            <PublishButton
+              onPress={() => {
+                navigation.navigate('CreateListingModal' as never);
+              }}
+            />
+          ),
+        }}
+      />
+      <MainTab.Screen
+        name="Chat"
+        component={ChatNavigator}
+        options={{ tabBarLabel: 'Chat' }}
       />
       <MainTab.Screen
         name="Profile"
@@ -283,12 +408,23 @@ function MainNavigator() {
 
 // Root Navigator
 export default function RootNavigator() {
-  const { user, isLoading } = useAuthStore();
+  const { user, isLoading, loadUser } = useAuthStore();
+
+  // Load user on mount
+  React.useEffect(() => {
+    loadUser();
+  }, []);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Carregando...</Text>
+        <LinearGradient
+          colors={['#FF6B35', '#FF8F5C']}
+          style={styles.loadingGradient}
+        >
+          <Ionicons name="flash" size={48} color={COLORS.white} />
+          <Text style={styles.loadingText}>Carregando...</Text>
+        </LinearGradient>
       </View>
     );
   }
@@ -303,6 +439,21 @@ export default function RootNavigator() {
             component={CartNavigator}
             options={{
               presentation: 'modal',
+            }}
+          />
+          <RootStack.Screen
+            name="Search"
+            component={SearchNavigator}
+            options={{
+              presentation: 'modal',
+            }}
+          />
+          <RootStack.Screen
+            name="CreateListingModal"
+            component={CreateListingScreen}
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
             }}
           />
           <RootStack.Screen
@@ -329,20 +480,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
+  loadingGradient: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.secondary,
+    fontWeight: '500',
+  },
   badge: {
     position: 'absolute',
     right: -6,
     top: -3,
     backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  publishButtonContainer: {
+    top: -20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
+  publishButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

@@ -9,6 +9,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  profilePicture?: string;
   role: UserRole;
   status: UserStatus;
   createdAt: string;
@@ -35,6 +36,16 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
+  user: User;
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  };
+}
+
+// Legacy format support
+export interface AuthResponseLegacy {
   user: User;
   accessToken: string;
   refreshToken: string;

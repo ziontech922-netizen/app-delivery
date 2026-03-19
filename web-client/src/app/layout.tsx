@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Providers from '@/components/Providers';
 import Navbar from '@/components/layout/Navbar';
+import BottomNav from '@/components/layout/BottomNav';
+import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/cart/CartDrawer';
 
 const inter = Inter({
@@ -11,9 +13,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Delivery App - Peça sua comida favorita',
-  description: 'A melhor plataforma de delivery da região. Peça comida dos melhores restaurantes.',
-  keywords: ['delivery', 'comida', 'restaurante', 'pedido', 'entrega'],
+  title: 'Super App - Hub de Negócios Locais',
+  description: 'Sua plataforma completa: delivery, marketplace, serviços, chat e muito mais. Tudo em um só lugar.',
+  keywords: ['super app', 'delivery', 'marketplace', 'serviços', 'chat', 'negócios locais'],
 };
 
 export default function RootLayout({
@@ -27,6 +29,8 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           <main className="min-h-screen">{children}</main>
+          <Footer />
+          <BottomNav />
           <CartDrawer />
         </Providers>
       </body>

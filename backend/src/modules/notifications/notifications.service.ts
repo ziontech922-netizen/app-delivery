@@ -12,6 +12,13 @@ import {
   BatchNotificationResponseDto,
 } from './dto/notification.dto';
 
+// Temporary interface until pushToken migration is applied
+interface UserWithPushToken {
+  id: string;
+  email?: string | null;
+  pushToken?: string | null;
+}
+
 @Injectable()
 export class NotificationsService implements OnModuleInit {
   private readonly logger = new Logger(NotificationsService.name);
@@ -478,6 +485,171 @@ export class NotificationsService implements OnModuleInit {
               <p><strong>Método:</strong> ${order.paymentMethod}</p>
             </div>
             <p>Acesse o painel para visualizar os detalhes do pedido.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // =============================================
+  // CHAT NOTIFICATIONS
+  // =============================================
+
+  /**
+   * Notify user about new chat message
+   */
+  async notifyChatMessage(params: {
+    recipientId: string;
+    senderName: string;
+    messagePreview: string;
+    conversationId: string;
+  }): Promise<void> {
+    // Get recipient's push token from database
+    // Note: pushToken field requires migration to be applied
+    const recipient = await this.prisma.user.findUnique({
+      where: { id: params.recipientId },
+    }) as unknown as UserWithPushToken | null;
+
+    if (!recipient?.pushToken) {
+      this.logger.log(`No push token for user ${params.recipientId}`);
+      return;
+    }
+
+    const title = `💬 ${params.senderName}`;
+    const body =
+      params.messagePreview.length > 100
+        ? `${params.messagePreview.substring(0, 100)}...`
+        : params.messagePreview;
+
+    await this.sendPushNotification({
+      token: recipient.pushToken,
+      title,
+      body,
+      data: {
+        type: 'chat_message',
+        conversationId: params.conversationId,
+      },
+    });
+  }
+
+  /**
+   * Notify about listing inquiry (marketplace chat)
+   */
+  async notifyListingInquiry(params: {
+    sellerId: string;
+    buyerName: string;
+    listingTitle: string;
+    listingId: string;
+    conversationId: string;
+  }): Promise<void> {
+    const seller = await this.prisma.user.findUnique({
+      where: { id: params.sellerId },
+    }) as unknown as UserWithPushToken | null;
+
+    if (!seller?.pushToken) {
+      this.logger.log(`No push token for seller ${params.sellerId}`);
+      return;
+    }
+
+    const title = '🛒 Interesse no seu anúncio';
+    const body = `${params.buyerName} perguntou sobre "${params.listingTitle}"`;
+
+    await this.sendPushNotification({
+      token: seller.pushToken,
+      title,
+      body,
+      data: {
+        type: 'listing_inquiry',
+        listingId: params.listingId,
+        conversationId: params.conversationId,
+      },
+    });
+
+    // Also send email
+    if (seller.email) {
+      await this.sendEmail({
+        to: seller.email,
+        subject: title,
+        html: this.getListingInquiryEmailTemplate(params.buyerName, params.listingTitle),
+      });
+    }
+  }
+
+  /**
+   * Notify user when their feed post gets a comment
+   */
+  async notifyFeedComment(params: {
+    postOwnerId: string;
+    commenterName: string;
+    commentPreview: string;
+    postId: string;
+  }): Promise<void> {
+    const owner = await this.prisma.user.findUnique({
+      where: { id: params.postOwnerId },
+    }) as unknown as UserWithPushToken | null;
+
+    if (!owner?.pushToken) return;
+
+    await this.sendPushNotification({
+      token: owner.pushToken,
+      title: `💬 ${params.commenterName} comentou`,
+      body: params.commentPreview,
+      data: {
+        type: 'feed_comment',
+        postId: params.postId,
+      },
+    });
+  }
+
+  /**
+   * Notify user when their feed post gets a like
+   */
+  async notifyFeedLike(params: {
+    postOwnerId: string;
+    likerName: string;
+    postId: string;
+  }): Promise<void> {
+    const owner = await this.prisma.user.findUnique({
+      where: { id: params.postOwnerId },
+    }) as unknown as UserWithPushToken | null;
+
+    if (!owner?.pushToken) return;
+
+    await this.sendPushNotification({
+      token: owner.pushToken,
+      title: '❤️ Nova curtida',
+      body: `${params.likerName} curtiu sua publicação`,
+      data: {
+        type: 'feed_like',
+        postId: params.postId,
+      },
+    });
+  }
+
+  private getListingInquiryEmailTemplate(buyerName: string, listingTitle: string): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #8b5cf6; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+          h1 { margin: 0; font-size: 24px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🛒 Interesse no seu anúncio</h1>
+          </div>
+          <div class="content">
+            <p><strong>${buyerName}</strong> demonstrou interesse no seu anúncio:</p>
+            <p style="font-size: 18px; color: #8b5cf6;">"${listingTitle}"</p>
+            <p>Acesse o app para responder a mensagem.</p>
           </div>
         </div>
       </body>

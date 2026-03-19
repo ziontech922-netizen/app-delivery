@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import * as SecureStore from 'expo-secure-store';
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'https://delivery-platform-api.fly.dev';
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'https://superapp-api-beta.fly.dev';
 
 type OrderUpdateCallback = (data: {
   orderId: string;

@@ -4,6 +4,8 @@ import {
   Post,
   Body,
   Param,
+  Query,
+  Headers,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
@@ -13,8 +15,7 @@ import { Auth } from '@modules/auth/decorators';
 import { PaymentsService } from './payments.service';
 import {
   CreatePaymentIntentDto,
-  ProcessPaymentDto,
-  WebhookPayloadDto,
+  ProcessCardPaymentDto,
   RefundPaymentDto,
 } from './dto';
 
@@ -26,9 +27,6 @@ export class PaymentsController {
   // CUSTOMER ENDPOINTS
   // =============================================
 
-  /**
-   * Cria PaymentIntent para um pedido
-   */
   @Post('payments/intents')
   @Auth(UserRole.CUSTOMER)
   @HttpCode(HttpStatus.CREATED)
@@ -36,18 +34,12 @@ export class PaymentsController {
     return this.paymentsService.createPaymentIntent(dto);
   }
 
-  /**
-   * Busca PaymentIntent por ID
-   */
   @Get('payments/intents/:id')
   @Auth(UserRole.CUSTOMER, UserRole.MERCHANT, UserRole.ADMIN)
   async getPaymentIntent(@Param('id', ParseUUIDPipe) id: string) {
     return this.paymentsService.findPaymentIntent(id);
   }
 
-  /**
-   * Busca PaymentIntent por orderId
-   */
   @Get('payments/orders/:orderId/intent')
   @Auth(UserRole.CUSTOMER, UserRole.MERCHANT, UserRole.ADMIN)
   async getPaymentIntentByOrder(@Param('orderId', ParseUUIDPipe) orderId: string) {
@@ -55,38 +47,52 @@ export class PaymentsController {
   }
 
   /**
-   * Processa pagamento (simulado)
-   * Em produção, isso seria feito pelo SDK do gateway
+   * Processa pagamento com cartão (token gerado pelo MercadoPago.js)
    */
-  @Post('payments/process')
+  @Post('payments/process-card')
   @Auth(UserRole.CUSTOMER)
   @HttpCode(HttpStatus.OK)
-  async processPayment(@Body() dto: ProcessPaymentDto) {
-    return this.paymentsService.processPayment(dto);
+  async processCardPayment(@Body() dto: ProcessCardPaymentDto) {
+    return this.paymentsService.processCardPayment(dto);
   }
 
   // =============================================
-  // WEBHOOK (SIMULATED)
+  // MERCADO PAGO WEBHOOK
   // =============================================
 
   /**
-   * Endpoint de webhook simulado
-   * Em produção, seria chamado pelo gateway de pagamento
-   * Não requer autenticação (validação via assinatura em produção)
+   * Webhook do Mercado Pago
+   * Não requer autenticação (validação via assinatura)
    */
-  @Post('payments/webhook')
+  @Post('payments/webhook/mercadopago')
   @HttpCode(HttpStatus.OK)
-  async handleWebhook(@Body() payload: WebhookPayloadDto) {
-    return this.paymentsService.handleWebhook(payload);
+  async handleMercadoPagoWebhook(
+    @Query('type') type: string,
+    @Query('data.id') dataId: string,
+    @Body() body: any,
+    @Headers('x-signature') xSignature?: string,
+    @Headers('x-request-id') xRequestId?: string,
+  ) {
+    // Mercado Pago envia type e data.id como query params ou no body
+    const webhookType = type || body?.type || body?.action;
+    const webhookDataId = dataId || body?.data?.id?.toString();
+
+    if (!webhookType || !webhookDataId) {
+      return { received: true };
+    }
+
+    return this.paymentsService.handleMercadoPagoWebhook({
+      type: webhookType,
+      dataId: webhookDataId,
+      xSignature,
+      xRequestId,
+    });
   }
 
   // =============================================
   // ADMIN ENDPOINTS
   // =============================================
 
-  /**
-   * Processa refund manualmente
-   */
   @Post('admin/payments/refund')
   @Auth(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
@@ -94,9 +100,6 @@ export class PaymentsController {
     return this.paymentsService.refundPayment(dto);
   }
 
-  /**
-   * Verifica se pedido pode ser confirmado
-   */
   @Get('admin/payments/orders/:orderId/can-confirm')
   @Auth(UserRole.ADMIN, UserRole.MERCHANT)
   async canConfirmOrder(@Param('orderId', ParseUUIDPipe) orderId: string) {

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Patch, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Patch, Delete, Body } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
 import { UsersService } from './users.service';
 import { Auth, CurrentUser } from '../auth/decorators';
@@ -16,6 +16,106 @@ export class UsersController {
   @Auth()
   async getMe(@CurrentUser() user: JwtPayload) {
     return this.usersService.findById(user.sub);
+  }
+
+  /**
+   * PATCH /api/v1/users/me
+   * Atualiza perfil do usuário logado
+   */
+  @Patch('me')
+  @Auth()
+  async updateProfile(
+    @CurrentUser() user: JwtPayload,
+    @Body() data: {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      bio?: string;
+      avatarUrl?: string;
+      defaultCity?: string;
+      defaultState?: string;
+    },
+  ) {
+    return this.usersService.updateProfile(user.sub, data);
+  }
+
+  /**
+   * GET /api/v1/users/me/addresses
+   */
+  @Get('me/addresses')
+  @Auth()
+  async getAddresses(@CurrentUser() user: JwtPayload) {
+    return this.usersService.getAddresses(user.sub);
+  }
+
+  /**
+   * POST /api/v1/users/me/addresses
+   */
+  @Post('me/addresses')
+  @Auth()
+  async createAddress(
+    @CurrentUser() user: JwtPayload,
+    @Body() data: {
+      label?: string;
+      street: string;
+      number: string;
+      complement?: string;
+      neighborhood: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      latitude?: number;
+      longitude?: number;
+      isDefault?: boolean;
+    },
+  ) {
+    return this.usersService.createAddress(user.sub, data);
+  }
+
+  /**
+   * PATCH /api/v1/users/me/addresses/:id
+   */
+  @Patch('me/addresses/:id')
+  @Auth()
+  async updateAddress(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') addressId: string,
+    @Body() data: {
+      label?: string;
+      street?: string;
+      number?: string;
+      complement?: string;
+      neighborhood?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+      latitude?: number;
+      longitude?: number;
+      isDefault?: boolean;
+    },
+  ) {
+    return this.usersService.updateAddress(user.sub, addressId, data);
+  }
+
+  /**
+   * DELETE /api/v1/users/me/addresses/:id
+   */
+  @Delete('me/addresses/:id')
+  @Auth()
+  async deleteAddress(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') addressId: string,
+  ) {
+    return this.usersService.deleteAddress(user.sub, addressId);
+  }
+
+  /**
+   * GET /api/v1/users/me/reviews
+   */
+  @Get('me/reviews')
+  @Auth()
+  async getReviews(@CurrentUser() user: JwtPayload) {
+    return this.usersService.getReviews(user.sub);
   }
 
   /**

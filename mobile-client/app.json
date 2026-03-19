@@ -1,15 +1,24 @@
 {
   "expo": {
-    "name": "mobile-client",
+    "name": "SuperApp Delivery",
     "slug": "mobile-client",
     "version": "1.0.0",
+    "sdkVersion": "51.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FF6B35"
     },
     "ios": {
       "supportsTablet": true
@@ -20,8 +29,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

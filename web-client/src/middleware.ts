@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Rotas que requerem autenticação
-const protectedRoutes = ['/checkout', '/orders', '/profile'];
+const protectedRoutes = ['/checkout', '/orders', '/profile', '/chat'];
 
 // Rotas apenas para usuários NÃO autenticados
 const authRoutes = ['/login', '/register'];

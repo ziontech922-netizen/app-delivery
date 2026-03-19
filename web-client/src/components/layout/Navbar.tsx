@@ -1,19 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ShoppingCart, User, Menu, X, LogOut } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { ShoppingCart, User, LogOut, MapPin } from 'lucide-react';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { authService } from '@/services/auth.service';
 import Button from '@/components/ui/Button';
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { getItemCount } = useCartStore();
-  const { isMobileMenuOpen, toggleMobileMenu, openCart } = useUIStore();
+  const { openCart } = useUIStore();
+
+  // Esconder navbar em páginas de auth
+  const hiddenPaths = ['/login', '/register', '/welcome', '/forgot-password', '/reset-password'];
+  const shouldHide = hiddenPaths.some(path => pathname.startsWith(path));
 
   const itemCount = getItemCount();
+
+  if (shouldHide) return null;
 
   const handleLogout = async () => {
     try {
@@ -29,24 +36,36 @@ export default function Navbar() {
       <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">D</span>
+          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-lg">S</span>
           </div>
-          <span className="font-bold text-xl text-gray-900">Delivery</span>
+          <span className="font-bold text-xl text-gray-900">SuperApp</span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
           <Link
             href="/"
-            className="text-gray-600 hover:text-primary-600 transition-colors"
+            className="text-gray-600 hover:text-orange-600 transition-colors"
           >
-            Restaurantes
+            Início
+          </Link>
+          <Link
+            href="/listings"
+            className="text-gray-600 hover:text-orange-600 transition-colors"
+          >
+            Marketplace
+          </Link>
+          <Link
+            href="/"
+            className="text-gray-600 hover:text-orange-600 transition-colors"
+          >
+            Delivery
           </Link>
           {isAuthenticated && (
             <Link
               href="/orders"
-              className="text-gray-600 hover:text-primary-600 transition-colors"
+              className="text-gray-600 hover:text-orange-600 transition-colors"
             >
               Meus Pedidos
             </Link>
@@ -99,8 +118,15 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <div className="flex md:hidden items-center gap-2">
+        {/* Mobile Header - Simplificado com carrinho */}
+        <div className="flex md:hidden items-center gap-3">
+          {/* Localização (opcional) */}
+          <button className="flex items-center gap-1 text-gray-600 text-sm">
+            <MapPin className="h-4 w-4 text-primary-600" />
+            <span className="max-w-[100px] truncate">Entregar aqui</span>
+          </button>
+          
+          {/* Carrinho */}
           <button
             onClick={openCart}
             className="relative p-2 text-gray-600"
@@ -112,71 +138,8 @@ export default function Navbar() {
               </span>
             )}
           </button>
-          <button
-            onClick={toggleMobileMenu}
-            className="p-2 text-gray-600"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
         </div>
       </nav>
-
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="container mx-auto px-4 py-4 space-y-4">
-            <Link
-              href="/"
-              className="block text-gray-600 hover:text-primary-600"
-              onClick={toggleMobileMenu}
-            >
-              Restaurantes
-            </Link>
-            {isAuthenticated ? (
-              <>
-                <Link
-                  href="/orders"
-                  className="block text-gray-600 hover:text-primary-600"
-                  onClick={toggleMobileMenu}
-                >
-                  Meus Pedidos
-                </Link>
-                <Link
-                  href="/profile"
-                  className="block text-gray-600 hover:text-primary-600"
-                  onClick={toggleMobileMenu}
-                >
-                  Meu Perfil
-                </Link>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    toggleMobileMenu();
-                  }}
-                  className="block text-red-600"
-                >
-                  Sair
-                </button>
-              </>
-            ) : (
-              <div className="flex flex-col gap-2 pt-2">
-                <Link href="/login" onClick={toggleMobileMenu}>
-                  <Button variant="outline" className="w-full">
-                    Entrar
-                  </Button>
-                </Link>
-                <Link href="/register" onClick={toggleMobileMenu}>
-                  <Button className="w-full">Criar conta</Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </header>
   );
 }

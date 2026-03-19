@@ -145,9 +145,9 @@ export default function AdminUsersPage() {
   const users = data?.data || [];
   const filteredUsers = users.filter(
     (u) =>
-      u.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (u.firstName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.lastName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAction = (user: AdminUser, action: 'suspend' | 'activate' | 'role') => {

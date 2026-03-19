@@ -25,11 +25,22 @@ import {
   ApproveDriverDto,
   SuspendDriverDto,
   RejectDriverDto,
+  RegisterDriverDto,
 } from './dto';
 
 @Controller('drivers')
 export class DriversController {
   constructor(private readonly driversService: DriversService) {}
+
+  // ===========================================
+  // PUBLIC REGISTRATION
+  // ===========================================
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  registerDriver(@Body() dto: RegisterDriverDto) {
+    return this.driversService.registerDriver(dto);
+  }
 
   // ===========================================
   // PROFILE ENDPOINTS (DRIVER)
@@ -57,6 +68,53 @@ export class DriversController {
     @Body() dto: UpdateDriverProfileDto,
   ) {
     return this.driversService.updateProfile(userId, dto);
+  }
+
+  // Alias endpoints for frontend compatibility (/me = /profile)
+  @Get('me')
+  @Auth(UserRole.DRIVER)
+  getMe(@CurrentUser('sub') userId: string) {
+    return this.driversService.getMyProfile(userId);
+  }
+
+  @Patch('me')
+  @Auth(UserRole.DRIVER)
+  updateMe(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: UpdateDriverProfileDto,
+  ) {
+    return this.driversService.updateProfile(userId, dto);
+  }
+
+  @Patch('me/status')
+  @Auth(UserRole.DRIVER)
+  updateMyStatus(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: SetAvailabilityDto,
+  ) {
+    return this.driversService.setAvailability(userId, dto);
+  }
+
+  @Get('me/stats')
+  @Auth(UserRole.DRIVER)
+  getMyStatsAlias(@CurrentUser('sub') userId: string) {
+    return this.driversService.getMyStats(userId);
+  }
+
+  @Get('me/earnings/summary')
+  @Auth(UserRole.DRIVER)
+  getEarningsSummary(@CurrentUser('sub') userId: string) {
+    return this.driversService.getEarningsSummary(userId);
+  }
+
+  @Get('me/earnings/daily')
+  @Auth(UserRole.DRIVER)
+  getDailyEarnings(
+    @CurrentUser('sub') userId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.driversService.getDailyEarnings(userId, startDate, endDate);
   }
 
   // ===========================================

@@ -19,11 +19,11 @@ import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { restaurantService } from '../../services/restaurantService';
 import { useCartStore } from '../../stores/cartStore';
-import { HomeStackParamList } from '../../navigation/types';
+import { ExploreStackParamList } from '../../navigation/types';
 import { Product, Category } from '../../types';
 
-type RestaurantDetailRouteProp = RouteProp<HomeStackParamList, 'RestaurantDetail'>;
-type RestaurantDetailNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'RestaurantDetail'>;
+type RestaurantDetailRouteProp = RouteProp<ExploreStackParamList, 'RestaurantDetail'>;
+type RestaurantDetailNavigationProp = NativeStackNavigationProp<ExploreStackParamList, 'RestaurantDetail'>;
 
 const { width, height } = Dimensions.get('window');
 

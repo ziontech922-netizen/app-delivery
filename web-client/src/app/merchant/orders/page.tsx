@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Clock,
   ChefHat,
   Package,
   Truck,
@@ -20,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { merchantDashboardService, MerchantOrder } from '@/services/merchant.dashboard.service';
-import { etaService, OrderEtaResult } from '@/services/eta.service';
+import { OrderEtaResult } from '@/services/eta.service';
 import { formatCurrency } from '@/utils/format';
 
 const statusConfig: Record<

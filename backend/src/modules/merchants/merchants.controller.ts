@@ -26,12 +26,17 @@ export class MerchantsController {
    */
   @Get()
   async findAllActive(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Query('city') city?: string,
     @Query('search') search?: string,
   ) {
-    return this.merchantsService.findAllActive({ page, limit, city, search });
+    return this.merchantsService.findAllActive({
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      city,
+      search,
+    });
   }
 
   /**

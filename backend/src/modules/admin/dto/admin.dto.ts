@@ -9,7 +9,7 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { MerchantStatus, OrderStatus, UserStatus, UserRole } from '@prisma/client';
+import { MerchantStatus, OrderStatus, UserStatus, UserRole, DriverStatus, VehicleType } from '@prisma/client';
 
 // =============================================
 // MERCHANT MANAGEMENT
@@ -199,4 +199,40 @@ export class DashboardStatsResponseDto {
   todayRevenue!: number;
   
   generatedAt!: Date;
+}
+
+// =============================================
+// DRIVER MANAGEMENT
+// =============================================
+
+export class AdminDriverQueryDto extends AdminPaginationDto {
+  @IsOptional()
+  @IsEnum(DriverStatus)
+  status?: DriverStatus;
+
+  @IsOptional()
+  @IsEnum(VehicleType)
+  vehicleType?: VehicleType;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+export class ApproveDriverDto {
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class SuspendDriverDto {
+  @IsString()
+  @IsNotEmpty()
+  reason!: string;
+}
+
+export class RejectDriverDto {
+  @IsString()
+  @IsNotEmpty()
+  reason!: string;
 }

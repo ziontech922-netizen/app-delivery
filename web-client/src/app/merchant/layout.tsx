@@ -19,6 +19,7 @@ import {
   Settings,
   ChevronDown,
   Power,
+  Tag,
 } from 'lucide-react';
 import { useAuthStore } from '@/store';
 import { merchantDashboardService } from '@/services/merchant.dashboard.service';
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Pedidos', href: '/merchant/orders', icon: ShoppingBag },
   { name: 'Produtos', href: '/merchant/products', icon: Package },
   { name: 'Categorias', href: '/merchant/categories', icon: FolderOpen },
+  { name: 'Cupons', href: '/merchant/coupons', icon: Tag },
   { name: 'Analytics', href: '/merchant/analytics', icon: BarChart3 },
   { name: 'Avaliações', href: '/merchant/reviews', icon: Star },
 ];
@@ -40,18 +42,21 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Redirect if not merchant
+  // Check if this is a public page (login/register) - render children only
+  const isPublicPage = pathname === '/merchant/login' || pathname?.startsWith('/merchant/register');
+
+  // Redirect if not merchant (but allow login/register pages)
   useEffect(() => {
-    if (user && user.role !== 'MERCHANT') {
+    if (!isPublicPage && user && user.role !== 'MERCHANT') {
       router.push('/merchant/login');
     }
-  }, [user, router]);
+  }, [user, router, isPublicPage]);
 
-  // Fetch merchant profile
+  // Fetch merchant profile - only for authenticated merchant pages
   const { data: profile } = useQuery({
     queryKey: ['merchant', 'profile'],
     queryFn: merchantDashboardService.getProfile,
-    enabled: !!user && user.role === 'MERCHANT',
+    enabled: !isPublicPage && !!user && user.role === 'MERCHANT',
     placeholderData: {
       id: '1',
       businessName: 'Meu Restaurante',
@@ -98,8 +103,8 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
     router.push('/merchant/login');
   };
 
-  // Don't render layout for login page
-  if (pathname === '/merchant/login') {
+  // Don't render layout for login and register pages
+  if (isPublicPage) {
     return <>{children}</>;
   }
 
@@ -130,6 +135,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           <button
             onClick={() => setSidebarOpen(false)}
             className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg lg:hidden"
+            aria-label="Fechar menu"
           >
             <X className="h-5 w-5" />
           </button>
@@ -155,6 +161,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   profile.isOpen ? 'bg-green-500' : 'bg-gray-300'
                 }`}
+                aria-label={profile.isOpen ? 'Fechar loja' : 'Abrir loja'}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -244,6 +251,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg lg:hidden"
+            aria-label="Abrir menu"
           >
             <Menu className="h-6 w-6" />
           </button>
@@ -264,7 +272,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
             )}
 
             {/* Notifications */}
-            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-lg" aria-label="Notificações">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             </button>

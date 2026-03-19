@@ -19,6 +19,16 @@ export class MerchantsService {
    * Cria um novo merchant para o usuário autenticado
    */
   async create(userId: string, dto: CreateMerchantDto) {
+    // Verificar se usuário é ADMIN - admins não podem criar merchants
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === UserRole.ADMIN) {
+      throw new ForbiddenException('Administradores não podem criar estabelecimentos. Use uma conta diferente.');
+    }
+
     // Verificar se usuário já tem merchant
     const existingMerchant = await this.prisma.merchant.findUnique({
       where: { userId },

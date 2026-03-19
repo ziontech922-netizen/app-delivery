@@ -261,7 +261,7 @@ function MerchantResultCard({ merchant }: { merchant: SearchMerchantResult }) {
               <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
                 <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
               </svg>
-              <span>{merchant.rating.toFixed(1)}</span>
+              <span>{Number(merchant.rating).toFixed(1)}</span>
               {merchant.reviewCount > 0 && (
                 <span className="text-gray-400">({merchant.reviewCount})</span>
               )}
@@ -283,7 +283,7 @@ function MerchantResultCard({ merchant }: { merchant: SearchMerchantResult }) {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 </svg>
-                {merchant.deliveryFee === 0 ? 'Grátis' : `R$ ${merchant.deliveryFee.toFixed(2)}`}
+                {Number(merchant.deliveryFee) === 0 ? 'Grátis' : `R$ ${Number(merchant.deliveryFee).toFixed(2)}`}
               </span>
             )}
             {merchant.distance && (
@@ -291,7 +291,7 @@ function MerchantResultCard({ merchant }: { merchant: SearchMerchantResult }) {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-                {merchant.distance.toFixed(1)} km
+                {Number(merchant.distance).toFixed(1)} km
               </span>
             )}
           </div>
@@ -343,7 +343,7 @@ function ProductResultCard({ product }: { product: SearchProductResult }) {
         )}
         <div className="flex items-center justify-between">
           <span className="font-bold text-primary-600">
-            R$ {product.price.toFixed(2)}
+            R$ {Number(product.price).toFixed(2)}
           </span>
           {/* Merchant info */}
           <div className="flex items-center gap-2">

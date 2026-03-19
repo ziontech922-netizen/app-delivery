@@ -24,52 +24,21 @@ export class CreatePaymentIntentDto {
 }
 
 // =============================================
-// PROCESS PAYMENT (STUB)
+// PROCESS CARD PAYMENT
 // =============================================
 
-export class ProcessPaymentDto {
+export class ProcessCardPaymentDto {
   @IsUUID()
   @IsNotEmpty()
   paymentIntentId!: string;
 
-  // Dados simulados (não sensíveis)
-  @IsOptional()
-  @IsString()
-  cardLast4?: string;
-
-  @IsOptional()
-  @IsString()
-  cardBrand?: string;
-}
-
-// =============================================
-// WEBHOOK PAYLOAD (SIMULATED)
-// =============================================
-
-export class WebhookPayloadDto {
   @IsString()
   @IsNotEmpty()
-  event!: string;
-
-  @IsUUID()
-  @IsNotEmpty()
-  paymentIntentId!: string;
-
-  @IsEnum(PaymentIntentStatus)
-  @IsNotEmpty()
-  status!: PaymentIntentStatus;
+  token!: string; // Token gerado pelo MercadoPago.js no frontend
 
   @IsOptional()
-  @IsString()
-  externalId?: string;
-
-  @IsOptional()
-  @IsString()
-  failureCode?: string;
-
-  @IsOptional()
-  @IsString()
-  failureMessage?: string;
+  @IsNumber()
+  installments?: number;
 }
 
 // =============================================
