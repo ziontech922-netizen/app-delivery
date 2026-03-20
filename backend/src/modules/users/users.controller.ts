@@ -134,6 +134,15 @@ export class UsersController {
   }
 
   /**
+   * GET /api/v1/users/:id/public
+   * Retorna perfil público do usuário (sem autenticação)
+   */
+  @Get(':id/public')
+  async getPublicProfile(@Param('id') id: string) {
+    return this.usersService.getPublicProfile(id);
+  }
+
+  /**
    * GET /api/v1/users/:id
    * Busca usuário por ID (admin only)
    */

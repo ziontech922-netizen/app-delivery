@@ -310,8 +310,11 @@ export default function ListingDetailPage() {
               {/* Seller Info */}
               {listing.user && (
                 <div className="border-t pt-6 mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                  <Link 
+                    href={`/user/${listing.userId}`}
+                    className="flex items-center gap-3 group"
+                  >
+                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden ring-2 ring-transparent group-hover:ring-primary-200 transition-all">
                       {listing.user.avatarUrl ? (
                         <img
                           src={listing.user.avatarUrl}
@@ -322,15 +325,16 @@ export default function ListingDetailPage() {
                         <User className="w-6 h-6 text-gray-400" />
                       )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
                         {listing.user.firstName} {listing.user.lastName}
                       </p>
                       {listing.user.userHandle && (
                         <p className="text-sm text-gray-500">@{listing.user.userHandle}</p>
                       )}
                     </div>
-                  </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition-colors" />
+                  </Link>
                 </div>
               )}
 

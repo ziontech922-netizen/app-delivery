@@ -34,6 +34,70 @@ export class UsersService {
   }
 
   /**
+   * Retorna perfil público do usuário (sem dados sensíveis)
+   */
+  async getPublicProfile(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        userHandle: true,
+        avatarUrl: true,
+        createdAt: true,
+        _count: {
+          select: {
+            listings: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    // Contar apenas listings ativos
+    const activeListingsCount = await this.prisma.listing.count({
+      where: { userId: id, status: 'ACTIVE' },
+    });
+
+    // Buscar anúncios ativos recentes
+    const listings = await this.prisma.listing.findMany({
+      where: { userId: id, status: 'ACTIVE' },
+      take: 12,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        price: true,
+        priceType: true,
+        images: true,
+        category: true,
+        city: true,
+        state: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      userHandle: user.userHandle,
+      avatarUrl: user.avatarUrl,
+      memberSince: user.createdAt,
+      stats: {
+        activeListings: activeListingsCount,
+        totalReviews: 0, // TODO: implementar quando houver reviews de marketplace
+        averageRating: 0,
+      },
+      recentListings: listings,
+    };
+  }
+
+  /**
    * Busca usuário por email
    */
   async findByEmail(email: string) {
