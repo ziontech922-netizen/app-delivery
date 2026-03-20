@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { ShoppingCart, User, LogOut, MapPin } from 'lucide-react';
+import { ShoppingCart, User, LogOut, MapPin, MessageCircle } from 'lucide-react';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { authService } from '@/services/auth.service';
 import Button from '@/components/ui/Button';
@@ -63,12 +63,21 @@ export default function Navbar() {
             Delivery
           </Link>
           {isAuthenticated && (
-            <Link
-              href="/orders"
-              className="text-gray-600 hover:text-orange-600 transition-colors"
-            >
-              Meus Pedidos
-            </Link>
+            <>
+              <Link
+                href="/chat"
+                className="text-gray-600 hover:text-orange-600 transition-colors flex items-center gap-1"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Chat
+              </Link>
+              <Link
+                href="/orders"
+                className="text-gray-600 hover:text-orange-600 transition-colors"
+              >
+                Meus Pedidos
+              </Link>
+            </>
           )}
         </div>
 

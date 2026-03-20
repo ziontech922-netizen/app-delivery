@@ -6,6 +6,7 @@ import Navbar from '@/components/layout/Navbar';
 import BottomNav from '@/components/layout/BottomNav';
 import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/cart/CartDrawer';
+import FloatingChatButton from '@/components/chat/FloatingChatButton';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -32,6 +33,7 @@ export default function RootLayout({
           <Footer />
           <BottomNav />
           <CartDrawer />
+          <FloatingChatButton />
         </Providers>
       </body>
     </html>
