@@ -45,57 +45,45 @@ import { PageSpinner } from '@/components/ui/Spinner';
 const MAIN_CATEGORIES = [
   { 
     id: 'food', 
-    label: 'Delivery', 
-    description: 'Restaurantes e comida',
+    label: 'Comida', 
     icon: Utensils, 
-    color: 'from-orange-500 to-red-500', 
+    color: 'bg-orange-500', 
     href: '/#restaurants',
-    badge: '🔥',
   },
   { 
     id: 'products', 
     label: 'Produtos', 
-    description: 'Compre e venda',
     icon: ShoppingBag, 
-    color: 'from-blue-500 to-indigo-500', 
+    color: 'bg-blue-500', 
     href: '/listings?category=PRODUCTS',
-    badge: null,
   },
   { 
     id: 'services', 
     label: 'Serviços', 
-    description: 'Profissionais locais',
     icon: Wrench, 
-    color: 'from-purple-500 to-pink-500', 
+    color: 'bg-purple-500', 
     href: '/listings?category=SERVICES',
-    badge: null,
   },
   { 
     id: 'vehicles', 
     label: 'Veículos', 
-    description: 'Carros e motos',
     icon: Car, 
-    color: 'from-green-500 to-teal-500', 
+    color: 'bg-green-500', 
     href: '/listings?category=VEHICLES',
-    badge: null,
   },
   { 
     id: 'jobs', 
     label: 'Empregos', 
-    description: 'Vagas e oportunidades',
     icon: Briefcase, 
-    color: 'from-red-500 to-rose-500', 
+    color: 'bg-red-500', 
     href: '/listings?category=JOBS',
-    badge: '✨',
   },
   { 
     id: 'real_estate', 
     label: 'Imóveis', 
-    description: 'Aluguel e venda',
     icon: HomeIcon, 
-    color: 'from-amber-500 to-orange-500', 
+    color: 'bg-amber-500', 
     href: '/listings?category=REAL_ESTATE',
-    badge: null,
   },
 ];
 
@@ -191,175 +179,123 @@ export default function HomePage() {
   });
 
   return (
-    <div className="pb-24">
+    <div className="pb-20 md:pb-24">
       {/* =================== HERO SECTION =================== */}
       <section className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 text-white overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 translate-y-1/2" />
+          <div className="absolute top-0 left-0 w-64 md:w-96 h-64 md:h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-64 md:w-96 h-64 md:h-96 bg-white rounded-full translate-x-1/2 translate-y-1/2" />
         </div>
 
-        <div className="container mx-auto px-4 py-12 md:py-16 relative z-10">
+        <div className="container mx-auto px-4 py-8 md:py-12 lg:py-16 relative z-10">
           <div className="max-w-3xl">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="h-6 w-6 text-yellow-300 animate-pulse" />
-              <span className="text-orange-100 text-sm font-medium tracking-wide uppercase">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-5 w-5 text-yellow-300" />
+              <span className="text-orange-100 text-xs md:text-sm font-medium tracking-wide uppercase">
                 Hub de Negócios Locais
               </span>
             </div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 leading-tight">
               Tudo que você precisa,
-              <br />
-              <span className="text-yellow-300">em um só lugar</span>
+              <span className="text-yellow-300"> em um só lugar</span>
             </h1>
             
-            <p className="text-orange-100 text-lg md:text-xl mb-8 max-w-xl">
-              Delivery, marketplace, serviços, chat e muito mais. 
-              Conectamos você à sua comunidade local.
+            <p className="text-orange-100 text-sm md:text-base lg:text-lg mb-6 max-w-xl">
+              Delivery, marketplace, serviços, chat e muito mais. Explore sua cidade!
             </p>
 
-            {/* Search Bar */}
-            <div className="bg-white rounded-2xl p-2 shadow-2xl flex items-center gap-2 max-w-2xl">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar produtos, serviços, restaurantes..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-gray-900 placeholder-gray-400 focus:outline-none rounded-xl"
-                />
-              </div>
-              <button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-4 rounded-xl font-semibold transition-colors flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                <span className="hidden sm:inline">Buscar</span>
-              </button>
-            </div>
-
-            {/* Location */}
-            <div className="flex items-center gap-2 mt-6 text-sm text-orange-100">
+            {/* Location - Mobile first */}
+            <div className="flex items-center gap-2 text-xs md:text-sm text-orange-100 mb-4">
               <MapPin className="h-4 w-4" />
               <span>Sua localização: </span>
               <button className="underline font-medium text-white hover:text-yellow-300 transition-colors">
                 Definir endereço
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Stats Bar */}
-        <div className="bg-black/20 backdrop-blur-sm">
-          <div className="container mx-auto px-4 py-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {STATS.map((stat) => (
-                <div key={stat.label} className="flex items-center gap-3">
-                  <div className="p-2 bg-white/10 rounded-lg">
-                    <stat.icon className="h-5 w-5 text-yellow-300" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-white">{stat.value}</div>
-                    <div className="text-xs text-orange-100">{stat.label}</div>
-                  </div>
-                </div>
-              ))}
+            {/* Search Bar */}
+            <div className="bg-white rounded-xl md:rounded-2xl p-1.5 md:p-2 shadow-xl flex items-center gap-1 md:gap-2 max-w-2xl">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar produtos, serviços, restaurantes..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 md:pl-12 pr-2 md:pr-4 py-2.5 md:py-3 text-sm md:text-base text-gray-900 placeholder-gray-400 focus:outline-none rounded-lg md:rounded-xl"
+                />
+              </div>
+              <button className="bg-orange-500 hover:bg-orange-600 text-white px-3 md:px-5 py-2.5 md:py-3 rounded-lg md:rounded-xl font-medium transition-colors flex items-center gap-1 md:gap-2 text-sm md:text-base">
+                <Search className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="hidden sm:inline">Buscar</span>
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       {/* =================== MAIN CATEGORIES GRID =================== */}
-      <section className="container mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Explorar</h2>
-          <Link 
-            href="/listings" 
-            className="text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1"
-          >
-            Ver tudo <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
+      <section className="container mx-auto px-4 py-6 md:py-8">
+        <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">Explorar</h2>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
           {MAIN_CATEGORIES.map((cat) => (
             <Link
               key={cat.id}
               href={cat.href}
-              className="group relative overflow-hidden rounded-2xl bg-white shadow-sm hover:shadow-xl transition-all duration-300"
+              className="flex flex-col items-center p-3 md:p-4 bg-white rounded-xl border border-gray-100 hover:border-orange-200 hover:shadow-md transition-all"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-              
-              <div className="relative p-6 text-center">
-                <div className={`mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                  <cat.icon className="h-7 w-7 text-white" />
-                </div>
-                
-                {cat.badge && (
-                  <span className="absolute top-2 right-2 text-lg">{cat.badge}</span>
-                )}
-                
-                <h3 className="font-semibold text-gray-900 group-hover:text-white transition-colors">
-                  {cat.label}
-                </h3>
-                <p className="text-xs text-gray-500 group-hover:text-white/80 transition-colors mt-1">
-                  {cat.description}
-                </p>
+              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl ${cat.color} flex items-center justify-center mb-2 md:mb-3`}>
+                <cat.icon className="h-5 w-5 md:h-6 md:w-6 text-white" />
               </div>
+              <span className="text-xs md:text-sm font-medium text-gray-700 text-center">
+                {cat.label}
+              </span>
             </Link>
           ))}
         </div>
       </section>
 
       {/* =================== SPONSORS CAROUSEL =================== */}
-      <section className="container mx-auto px-4 py-6">
+      <section className="container mx-auto px-4 py-4 md:py-6">
         <SponsorCarousel placement="HOME_BANNER" autoPlay interval={6000} />
       </section>
 
       {/* =================== CHAT BANNER =================== */}
-      <section className="container mx-auto px-4 py-6">
+      <section className="container mx-auto px-4 py-3 md:py-6">
         <Link href="/chat" className="block group">
-          <div className="bg-gradient-to-r from-green-600 via-teal-600 to-cyan-600 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden hover:shadow-xl transition-shadow">
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-            
-            <div className="relative flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <MessageCircle className="h-5 w-5" />
-                  </div>
-                  <span className="text-green-100 text-sm font-medium">Chat em Tempo Real</span>
-                  <span className="px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-full">NOVO</span>
+          <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white relative overflow-hidden hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="p-2.5 md:p-3 bg-white/20 rounded-xl">
+                <MessageCircle className="h-5 w-5 md:h-6 md:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className="text-base md:text-lg font-bold truncate">Chat com vendedores</h3>
+                  <span className="px-1.5 py-0.5 bg-yellow-400 text-yellow-900 text-[10px] md:text-xs font-bold rounded">NOVO</span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-2">Converse com vendedores</h3>
-                <p className="text-green-100 text-sm md:text-base max-w-md">
-                  Negocie diretamente pelo app, com segurança e praticidade. 
-                  Tire dúvidas, combine entregas e feche negócios.
+                <p className="text-green-100 text-xs md:text-sm truncate">
+                  Negocie direto pelo app com segurança
                 </p>
               </div>
-              <div className="hidden md:flex items-center justify-center w-20 h-20 bg-white/10 rounded-full group-hover:bg-white/20 transition-colors">
-                <ArrowRight className="h-8 w-8 text-white group-hover:translate-x-1 transition-transform" />
-              </div>
+              <ChevronRight className="h-5 w-5 text-white/70 group-hover:text-white group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </div>
           </div>
         </Link>
       </section>
 
       {/* =================== MARKETPLACE SECTION =================== */}
-      <section className="container mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <ShoppingBag className="h-6 w-6 text-blue-500" />
-              Marketplace
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">Encontre os melhores produtos e serviços</p>
-          </div>
+      <section className="container mx-auto px-4 py-4 md:py-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
+            <ShoppingBag className="h-5 w-5 text-blue-500" />
+            Marketplace
+          </h2>
           <Link 
             href="/listings" 
-            className="text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1"
+            className="text-xs md:text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center"
           >
             Ver mais <ChevronRight className="h-4 w-4" />
           </Link>
@@ -450,38 +386,35 @@ export default function HomePage() {
       </section>
 
       {/* =================== COMMUNITY FEED =================== */}
-      <section className="container mx-auto px-4 py-10 bg-gray-50 -mx-4 px-8 md:mx-0 md:px-4 md:bg-transparent md:rounded-none">
+      <section className="container mx-auto px-4 py-4 md:py-8 bg-gray-50 -mx-4 px-8 md:mx-0 md:px-4 md:bg-transparent md:rounded-none">
         <FeedSection limit={6} />
       </section>
 
       {/* =================== DELIVERY SECTION =================== */}
-      <section className="container mx-auto px-4 py-10" id="restaurants">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Utensils className="h-6 w-6 text-orange-500" />
-              Delivery de Comida
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">Os melhores restaurantes da região</p>
-          </div>
+      <section className="container mx-auto px-4 py-4 md:py-8" id="restaurants">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Utensils className="h-5 w-5 text-orange-500" />
+            Delivery
+          </h2>
           <Link 
             href="/restaurants" 
-            className="text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1"
+            className="text-xs md:text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center"
           >
             Ver todos <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
 
         {/* Food Categories Filter */}
-        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide mb-4">
           {FOOD_CATEGORIES.map((category) => (
             <button
               key={category.id}
               onClick={() => setSelectedFoodCategory(category.id)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${
                 selectedFoodCategory === category.id
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:border-orange-300 hover:text-orange-600'
+                  ? 'bg-orange-500 text-white shadow-md'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-orange-300'
               }`}
             >
               <span>{category.emoji}</span>
@@ -494,18 +427,16 @@ export default function HomePage() {
         {merchantsLoading ? (
           <PageSpinner />
         ) : filteredMerchants.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl">
-            <Utensils className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">
+          <div className="text-center py-8 bg-white rounded-xl">
+            <Utensils className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-500 text-sm">
               {search
-                ? `Nenhum restaurante encontrado para "${search}"`
-                : selectedFoodCategory !== 'all'
-                ? 'Nenhum restaurante nesta categoria'
-                : 'Nenhum restaurante disponível no momento'}
+                ? `Nenhum resultado para "${search}"`
+                : 'Nenhum restaurante disponível'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
             {filteredMerchants.slice(0, 8).map((merchant) => (
               <MerchantCard key={merchant.id} merchant={merchant} />
             ))}
@@ -514,69 +445,42 @@ export default function HomePage() {
 
         {/* View More Button */}
         {filteredMerchants.length > 8 && (
-          <div className="text-center mt-8">
+          <div className="text-center mt-6">
             <Link
               href="/restaurants"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors"
             >
-              Ver todos os restaurantes
-              <ArrowRight className="h-5 w-5" />
+              Ver todos
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         )}
       </section>
 
       {/* =================== CTA SECTION =================== */}
-      <section className="container mx-auto px-4 py-10">
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 md:p-12 text-white relative overflow-hidden">
-          {/* Background Decoration */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl" />
-          
-          <div className="relative grid md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Comece a vender hoje
-              </h2>
-              <p className="text-gray-300 mb-6 max-w-md">
-                Anuncie seus produtos e serviços para milhares de pessoas na sua cidade. 
-                É grátis para começar!
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link
-                  href="/listings/create"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors"
-                >
-                  <Zap className="h-5 w-5" />
-                  Criar anúncio grátis
-                </Link>
-                <Link
-                  href="/merchant/register"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-colors border border-white/20"
-                >
-                  Seja um parceiro
-                </Link>
-              </div>
-            </div>
-            
-            <div className="hidden md:flex justify-center">
-              <div className="relative">
-                <div className="w-48 h-48 bg-orange-500/30 rounded-full flex items-center justify-center">
-                  <div className="w-36 h-36 bg-orange-500/50 rounded-full flex items-center justify-center">
-                    <div className="w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center">
-                      <TrendingUp className="h-12 w-12 text-white" />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Floating badges */}
-                <div className="absolute -top-4 -right-4 px-3 py-1.5 bg-green-500 rounded-full text-sm font-bold shadow-lg">
-                  +500 vendas/dia
-                </div>
-                <div className="absolute -bottom-2 -left-4 px-3 py-1.5 bg-blue-500 rounded-full text-sm font-bold shadow-lg">
-                  Grátis!
-                </div>
-              </div>
+      <section className="container mx-auto px-4 py-6 md:py-10">
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl md:rounded-2xl p-5 md:p-8 text-white relative overflow-hidden">
+          <div className="relative">
+            <h2 className="text-xl md:text-2xl font-bold mb-2">
+              Comece a vender hoje
+            </h2>
+            <p className="text-gray-300 text-sm mb-4 max-w-md">
+              Anuncie grátis para milhares de pessoas na sua cidade.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/listings/create"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                <Zap className="h-4 w-4" />
+                Criar anúncio
+              </Link>
+              <Link
+                href="/merchant/register"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition-colors border border-white/20"
+              >
+                Seja parceiro
+              </Link>
             </div>
           </div>
         </div>
